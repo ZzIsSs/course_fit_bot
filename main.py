@@ -24,21 +24,12 @@ def main():
     login_url = 'https://courses.fit.hcmus.edu.vn/login/index.php'
     
     try:
-        logging.info("Fetching login page to get logintoken...")
+        logging.info("Fetching login page...")
         response = session.get(login_url, timeout=15)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        logintoken_input = soup.find('input', {'name': 'logintoken'})
-        
-        if not logintoken_input:
-            send_error_to_discord(webhook_url, "Không tìm thấy `logintoken` trên trang đăng nhập. Cấu trúc trang có thể đã thay đổi!")
-            return
-            
-        logintoken = logintoken_input.get('value')
         
         login_data = {
             'username': username,
-            'password': password,
-            'logintoken': logintoken
+            'password': password
         }
         
         logging.info("Attempting login...")
