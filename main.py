@@ -92,7 +92,7 @@ def send_notification_to_discord(webhook_url, event_name, event_id):
     if id_match:
         event_url = f"https://courses.fit.hcmus.edu.vn/calendar/view.php?view=day&course=1&time=upcoming#event_{id_match.group(1)}"
         
-    message = f"🚨 **THÔNG BÁO MỚI (course.fit)**\n\n📌 **Nội dung:** {event_name}\n🔗 **Xem trên lịch:** {event_url}"
+    message = f"@everyone 🚨 **THÔNG BÁO MỚI (course.fit)**\n\n📌 **Nội dung:** {event_name}\n🔗 **Xem trên lịch:** {event_url}"
     payload = {"content": message}
     try:
         requests.post(webhook_url, json=payload, timeout=10)
