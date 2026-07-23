@@ -23,8 +23,7 @@ jobs:
         
       - name: Run script
         env:
-          COURSE_FIT_USERNAME: ${{ secrets.COURSE_FIT_USERNAME }}
-          COURSE_FIT_PASSWORD: ${{ secrets.COURSE_FIT_PASSWORD }}
+          MOODLE_CALENDAR_URL: ${{ secrets.MOODLE_CALENDAR_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
         
