@@ -24,7 +24,8 @@ jobs:
       - name: Run script
         env:
           MOODLE_CALENDAR_URL: ${{ secrets.MOODLE_CALENDAR_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_SERVER_ID: ${{ secrets.DISCORD_SERVER_ID }}
         run: python main.py
         
       - name: Commit and push updated state

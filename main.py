@@ -3,15 +3,61 @@ import json
 import logging
 import requests
 import re
+from datetime import datetime, timezone, timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+DISCORD_API_BASE = "https://discord.com/api/v10"
+
+def get_headers(token):
+    return {
+        "Authorization": f"Bot {token}",
+        "Content-Type": "application/json"
+    }
+
+def get_guild_channels(token, guild_id):
+    url = f"{DISCORD_API_BASE}/guilds/{guild_id}/channels"
+    response = requests.get(url, headers=get_headers(token))
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Failed to fetch channels: {response.status_code} {response.text}")
+        return []
+
+def create_channel(token, guild_id, channel_name):
+    url = f"{DISCORD_API_BASE}/guilds/{guild_id}/channels"
+    payload = {
+        "name": channel_name,
+        "type": 0 # 0 is Text Channel
+    }
+    response = requests.post(url, headers=get_headers(token), json=payload)
+    if response.status_code == 201:
+        logging.info(f"Created channel {channel_name}")
+        return response.json()
+    else:
+        logging.error(f"Failed to create channel {channel_name}: {response.status_code} {response.text}")
+        return None
+
+def send_message(token, channel_id, content):
+    url = f"{DISCORD_API_BASE}/channels/{channel_id}/messages"
+    payload = {"content": content}
+    response = requests.post(url, headers=get_headers(token), json=payload)
+    if response.status_code not in (200, 201):
+        logging.error(f"Failed to send message: {response.status_code} {response.text}")
+
+def clean_channel_name(name):
+    # Discord channel names must be lowercase, no spaces
+    name = re.sub(r'[^a-zA-Z0-9-]', '-', name.lower())
+    name = re.sub(r'-+', '-', name).strip('-')
+    return name if name else "general"
+
 def main():
     calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
-    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+    bot_token = os.environ.get('DISCORD_BOT_TOKEN')
+    guild_id = os.environ.get('DISCORD_SERVER_ID')
 
-    if not all([calendar_url, webhook_url]):
-        logging.error("Missing environment variables. Please check MOODLE_CALENDAR_URL and DISCORD_WEBHOOK_URL.")
+    if not all([calendar_url, bot_token, guild_id]):
+        logging.error("Missing environment variables: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, or DISCORD_SERVER_ID")
         return
 
     # 1. Fetch Calendar ICS
@@ -23,93 +69,131 @@ def main():
         response = requests.get(calendar_url, headers=headers, timeout=15)
         
         if response.status_code != 200:
-            send_error_to_discord(webhook_url, f"Không thể tải lịch. HTTP Status: {response.status_code}")
+            logging.error(f"Failed to load calendar. HTTP Status: {response.status_code}")
             return
             
         ics_data = response.text
-        logging.info("Successfully fetched ICS data.")
-        
     except Exception as e:
         logging.error(f"Error fetching calendar: {e}")
-        send_error_to_discord(webhook_url, f"Lỗi không tải được lịch: {e}")
         return
         
-    # 2. Parse ICS manually with Regex
+    # 2. Parse ICS
     events = []
-    
-    # Extract blocks of BEGIN:VEVENT ... END:VEVENT
     vevent_blocks = re.findall(r'BEGIN:VEVENT(.*?)END:VEVENT', ics_data, re.DOTALL)
     
     for block in vevent_blocks:
-        # Extract UID
         uid_match = re.search(r'\nUID:(.*?)\n', block)
-        # Extract SUMMARY
         summary_match = re.search(r'\nSUMMARY:(.*?)\n', block)
-        # Extract DESCRIPTION (optional, but good for details if we want)
+        dtend_match = re.search(r'\nDTEND:(.*?)\n', block)
+        cat_match = re.search(r'\nCATEGORIES:(.*?)\n', block)
         
-        if uid_match and summary_match:
+        if uid_match and summary_match and dtend_match:
             uid = uid_match.group(1).strip()
             summary = summary_match.group(1).strip()
-            events.append({"uid": uid, "summary": summary})
+            dtend_str = dtend_match.group(1).strip()
+            category = cat_match.group(1).strip() if cat_match else "General"
             
-    logging.info(f"Found {len(events)} events in calendar.")
+            # Extract subject from category (e.g. CQ2526HK2_CSC10014_CQ2024/2 -> CSC10014)
+            subject = category
+            subj_match = re.search(r'_([A-Z]{3,4}\d{5})_', category)
+            if subj_match:
+                subject = subj_match.group(1)
+            
+            try:
+                # dtend format is usually 20260722T165500Z
+                dtend = datetime.strptime(dtend_str, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+                events.append({
+                    "uid": uid,
+                    "summary": summary,
+                    "deadline": dtend,
+                    "subject": subject
+                })
+            except Exception as e:
+                logging.error(f"Error parsing date {dtend_str}: {e}")
 
-    # 3. Process events and load state
+    # 3. Cache channels
+    channels = get_guild_channels(bot_token, guild_id)
+    channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0} # map name -> id
+
+    # 4. Load state
     state_file = 'data/state.json'
-    
-    # Ensure data directory exists
     os.makedirs('data', exist_ok=True)
-    
     if os.path.exists(state_file):
         with open(state_file, 'r', encoding='utf-8') as f:
             state = json.load(f)
     else:
-        state = {"notified_items": []}
+        state = {"events": {}}
         
-    new_items_found = False
+    now = datetime.now(timezone.utc)
+    state_changed = False
     
+    # 5. Process events
     for event in events:
-        event_id = event["uid"]
-        event_name = event["summary"]
+        eid = event['uid']
+        # Initialize state for new event
+        if eid not in state['events']:
+            state['events'][eid] = {
+                "notified_new": False,
+                "reminded_3d": False,
+                "reminded_1d": False
+            }
         
-        # Moodle includes "is due" at the end of assignments, we can keep it as is.
+        evt_state = state['events'][eid]
+        time_left = event['deadline'] - now
         
-        if event_id not in state["notified_items"]:
-            # Found a new item!
-            logging.info(f"New event found: {event_name}")
-            send_notification_to_discord(webhook_url, event_name, event_id)
-            state["notified_items"].append(event_id)
-            new_items_found = True
+        # We only care about events in the future
+        if time_left.total_seconds() < 0:
+            continue
             
-    if new_items_found:
+        # Determine notification type
+        msg_type = None
+        if not evt_state['notified_new']:
+            msg_type = "NEW"
+            evt_state['notified_new'] = True
+        elif time_left <= timedelta(days=3) and not evt_state['reminded_3d']:
+            msg_type = "3_DAYS"
+            evt_state['reminded_3d'] = True
+        elif time_left <= timedelta(days=1) and not evt_state['reminded_1d']:
+            msg_type = "1_DAY"
+            evt_state['reminded_1d'] = True
+            
+        if msg_type:
+            state_changed = True
+            chan_name = clean_channel_name(event['subject'])
+            
+            # Create channel if not exists
+            if chan_name not in channel_map:
+                new_channel = create_channel(bot_token, guild_id, chan_name)
+                if new_channel:
+                    channel_map[chan_name] = new_channel['id']
+                else:
+                    continue # Failed to create channel, skip
+                    
+            target_chan_id = channel_map[chan_name]
+            
+            # Build message URL
+            event_url = "https://courses.fit.hcmus.edu.vn/calendar/view.php?view=upcoming"
+            id_match = re.search(r'^(\d+)@', eid)
+            if id_match:
+                event_url = f"https://courses.fit.hcmus.edu.vn/calendar/view.php?view=day&course=1&time=upcoming#event_{id_match.group(1)}"
+            
+            # Format time
+            local_tz = timezone(timedelta(hours=7)) # Vietnam Time
+            deadline_local = event['deadline'].astimezone(local_tz).strftime('%d/%m/%Y %H:%M')
+            
+            if msg_type == "NEW":
+                content = f"@everyone 🚨 **DEADLINE MỚI** 🚨\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}"
+            elif msg_type == "3_DAYS":
+                content = f"@everyone ⚠️ **NHẮC NHỞ: CÒN 3 NGÀY** ⚠️\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}"
+            elif msg_type == "1_DAY":
+                content = f"@everyone 🆘 **KHẨN CẤP: CÒN 24 GIỜ** 🆘\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}"
+                
+            send_message(bot_token, target_chan_id, content)
+
+    if state_changed:
         with open(state_file, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
         logging.info("State file updated.")
-    else:
-        logging.info("No new events to notify.")
-
-def send_notification_to_discord(webhook_url, event_name, event_id):
-    # Try to extract the ID number from UID to build a link if possible
-    # e.g., UID:57754@courses.fit.hcmus.edu.vn -> 57754
-    event_url = "https://courses.fit.hcmus.edu.vn/calendar/view.php?view=upcoming"
-    id_match = re.search(r'^(\d+)@', event_id)
-    if id_match:
-        event_url = f"https://courses.fit.hcmus.edu.vn/calendar/view.php?view=day&course=1&time=upcoming#event_{id_match.group(1)}"
-        
-    message = f"@everyone 🚨 **THÔNG BÁO MỚI (course.fit)**\n\n📌 **Nội dung:** {event_name}\n🔗 **Xem trên lịch:** {event_url}"
-    payload = {"content": message}
-    try:
-        requests.post(webhook_url, json=payload, timeout=10)
-    except Exception as e:
-        logging.error(f"Failed to send discord notification: {e}")
-
-def send_error_to_discord(webhook_url, error_message):
-    message = f"⚠️ **Lỗi Script course.fit:**\n{error_message}"
-    payload = {"content": message}
-    try:
-        requests.post(webhook_url, json=payload, timeout=10)
-    except Exception as e:
-        logging.error(f"Failed to send discord error notification: {e}")
 
 if __name__ == "__main__":
     main()
