@@ -120,9 +120,15 @@ def main():
     os.makedirs('data', exist_ok=True)
     if os.path.exists(state_file):
         with open(state_file, 'r', encoding='utf-8') as f:
-            state = json.load(f)
+            try:
+                state = json.load(f)
+            except json.JSONDecodeError:
+                state = {}
     else:
-        state = {"events": {}}
+        state = {}
+        
+    if "events" not in state:
+        state["events"] = {}
         
     now = datetime.now(timezone.utc)
     state_changed = False
