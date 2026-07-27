@@ -1,9 +1,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.mhtml
-*.html
-events.txt
 files.zip
-doc/
-extract.py
+dev/
+data/calendar.ics

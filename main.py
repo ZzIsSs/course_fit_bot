@@ -55,7 +55,11 @@ def main():
     logging.info(f"Found {len(events)} events in calendar.")
 
     # 3. Process events and load state
-    state_file = 'state.json'
+    state_file = 'data/state.json'
+    
+    # Ensure data directory exists
+    os.makedirs('data', exist_ok=True)
+    
     if os.path.exists(state_file):
         with open(state_file, 'r', encoding='utf-8') as f:
             state = json.load(f)
