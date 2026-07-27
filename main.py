@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import requests
@@ -51,16 +52,8 @@ def clean_channel_name(name):
     name = re.sub(r'-+', '-', name).strip('-')
     return name if name else "general"
 
-def main():
-    calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
-    bot_token = os.environ.get('DISCORD_BOT_TOKEN')
-    guild_id = os.environ.get('DISCORD_SERVER_ID')
-
-    if not all([calendar_url, bot_token, guild_id]):
-        logging.error("Missing environment variables: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, or DISCORD_SERVER_ID")
-        return
-
-    # 1. Fetch Calendar ICS
+def fetch_and_parse_events(calendar_url):
+    """Fetch ICS and parse events. Returns list of event dicts or None on failure."""
     try:
         logging.info("Fetching calendar ICS file...")
         headers = {
@@ -70,14 +63,13 @@ def main():
         
         if response.status_code != 200:
             logging.error(f"Failed to load calendar. HTTP Status: {response.status_code}")
-            return
+            return None
             
         ics_data = response.text
     except Exception as e:
         logging.error(f"Error fetching calendar: {e}")
-        return
+        return None
         
-    # 2. Parse ICS
     events = []
     vevent_blocks = re.findall(r'BEGIN:VEVENT(.*?)END:VEVENT', ics_data, re.DOTALL)
     
@@ -93,14 +85,12 @@ def main():
             dtend_str = dtend_match.group(1).strip()
             category = cat_match.group(1).strip() if cat_match else "General"
             
-            # Extract subject from category (e.g. CQ2526HK2_CSC10014_CQ2024/2 -> CSC10014)
             subject = category
             subj_match = re.search(r'_([A-Z]{3,4}\d{5})_', category)
             if subj_match:
                 subject = subj_match.group(1)
             
             try:
-                # dtend format is usually 20260722T165500Z
                 dtend = datetime.strptime(dtend_str, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
                 events.append({
                     "uid": uid,
@@ -110,12 +100,28 @@ def main():
                 })
             except Exception as e:
                 logging.error(f"Error parsing date {dtend_str}: {e}")
+    
+    logging.info(f"Found {len(events)} events in calendar.")
+    return events
 
-    # 3. Cache channels
+def main():
+    calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
+    bot_token = os.environ.get('DISCORD_BOT_TOKEN')
+    guild_id = os.environ.get('DISCORD_SERVER_ID')
+
+    if not all([calendar_url, bot_token, guild_id]):
+        logging.error("Missing environment variables: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, or DISCORD_SERVER_ID")
+        return
+
+    events = fetch_and_parse_events(calendar_url)
+    if events is None:
+        return
+
+    # Cache channels
     channels = get_guild_channels(bot_token, guild_id)
-    channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0} # map name -> id
+    channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0}
 
-    # 4. Load state
+    # Load state
     state_file = 'data/state.json'
     os.makedirs('data', exist_ok=True)
     if os.path.exists(state_file):
@@ -131,12 +137,12 @@ def main():
         state["events"] = {}
         
     now = datetime.now(timezone.utc)
+    local_tz = timezone(timedelta(hours=7))
     state_changed = False
     
-    # 5. Process events
+    # Process events
     for event in events:
         eid = event['uid']
-        # Initialize state for new event
         if eid not in state['events']:
             state['events'][eid] = {
                 "notified_new": False,
@@ -147,11 +153,9 @@ def main():
         evt_state = state['events'][eid]
         time_left = event['deadline'] - now
         
-        # We only care about events in the future
         if time_left.total_seconds() < 0:
             continue
             
-        # Determine notification type
         msg_type = None
         if not evt_state['notified_new']:
             msg_type = "NEW"
@@ -167,24 +171,20 @@ def main():
             state_changed = True
             chan_name = clean_channel_name(event['subject'])
             
-            # Create channel if not exists
             if chan_name not in channel_map:
                 new_channel = create_channel(bot_token, guild_id, chan_name)
                 if new_channel:
                     channel_map[chan_name] = new_channel['id']
                 else:
-                    continue # Failed to create channel, skip
+                    continue
                     
             target_chan_id = channel_map[chan_name]
             
-            # Build message URL
             event_url = "https://courses.fit.hcmus.edu.vn/calendar/view.php?view=upcoming"
             id_match = re.search(r'^(\d+)@', eid)
             if id_match:
                 event_url = f"https://courses.fit.hcmus.edu.vn/calendar/view.php?view=day&course=1&time=upcoming#event_{id_match.group(1)}"
             
-            # Format time
-            local_tz = timezone(timedelta(hours=7)) # Vietnam Time
             deadline_local = event['deadline'].astimezone(local_tz).strftime('%d/%m/%Y %H:%M')
             
             if msg_type == "NEW":
@@ -201,5 +201,96 @@ def main():
             json.dump(state, f, indent=4)
         logging.info("State file updated.")
 
+def send_daily_summary():
+    """Send a daily summary of all upcoming deadlines to the general channel."""
+    calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
+    bot_token = os.environ.get('DISCORD_BOT_TOKEN')
+    guild_id = os.environ.get('DISCORD_SERVER_ID')
+
+    if not all([calendar_url, bot_token, guild_id]):
+        logging.error("Missing environment variables.")
+        return
+
+    events = fetch_and_parse_events(calendar_url)
+    if events is None:
+        return
+
+    now = datetime.now(timezone.utc)
+    local_tz = timezone(timedelta(hours=7))
+    today_str = now.astimezone(local_tz).strftime('%d/%m/%Y')
+    
+    # Categorize events
+    overdue = []
+    urgent_1d = []
+    warning_3d = []
+    upcoming = []
+    subjects = set()
+    
+    for event in events:
+        time_left = event['deadline'] - now
+        subjects.add(event['subject'])
+        
+        if time_left.total_seconds() < 0:
+            overdue.append(event)
+        elif time_left <= timedelta(days=1):
+            urgent_1d.append(event)
+        elif time_left <= timedelta(days=3):
+            warning_3d.append(event)
+        else:
+            upcoming.append(event)
+    
+    # Build summary message
+    lines = []
+    lines.append(f"@everyone")
+    lines.append(f"📊 **TỔNG KẾT DEADLINE — {today_str}**")
+    lines.append(f"━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"📚 **Số môn đang theo dõi:** {len(subjects)}")
+    lines.append(f"📌 **Tổng deadline:** {len(events)}")
+    lines.append(f"🔴 **Quá hạn:** {len(overdue)}")
+    lines.append(f"🟠 **Còn < 24 giờ:** {len(urgent_1d)}")
+    lines.append(f"🟡 **Còn < 3 ngày:** {len(warning_3d)}")
+    lines.append(f"🟢 **Còn nhiều thời gian:** {len(upcoming)}")
+    lines.append(f"━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Detail urgent deadlines
+    if urgent_1d:
+        lines.append(f"\n🆘 **KHẨN CẤP (< 24 giờ):**")
+        for e in urgent_1d:
+            dl = e['deadline'].astimezone(local_tz).strftime('%d/%m %H:%M')
+            lines.append(f"  ▸ [{e['subject']}] {e['summary']} — ⏰ {dl}")
+    
+    if warning_3d:
+        lines.append(f"\n⚠️ **SẮP TỚI (< 3 ngày):**")
+        for e in warning_3d:
+            dl = e['deadline'].astimezone(local_tz).strftime('%d/%m %H:%M')
+            lines.append(f"  ▸ [{e['subject']}] {e['summary']} — ⏰ {dl}")
+
+    if upcoming:
+        lines.append(f"\n📅 **DEADLINE SẮP TỚI:**")
+        for e in sorted(upcoming, key=lambda x: x['deadline']):
+            dl = e['deadline'].astimezone(local_tz).strftime('%d/%m %H:%M')
+            lines.append(f"  ▸ [{e['subject']}] {e['summary']} — ⏰ {dl}")
+
+    content = "\n".join(lines)
+    
+    # Find or create the summary channel
+    channels = get_guild_channels(bot_token, guild_id)
+    channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0}
+    
+    summary_channel = "tong-ket-deadline"
+    if summary_channel not in channel_map:
+        new_ch = create_channel(bot_token, guild_id, summary_channel)
+        if new_ch:
+            channel_map[summary_channel] = new_ch['id']
+        else:
+            logging.error("Cannot create summary channel.")
+            return
+    
+    send_message(bot_token, channel_map[summary_channel], content)
+    logging.info("Daily summary sent successfully!")
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--summary":
+        send_daily_summary()
+    else:
+        main()

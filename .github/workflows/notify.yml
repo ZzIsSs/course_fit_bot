@@ -2,8 +2,18 @@ name: Notification Bot
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Run every 30 minutes
+    - cron: '*/30 * * * *' # Check deadlines every 30 minutes
+    - cron: '0 0 * * *'    # Daily summary at 00:00 UTC (7:00 AM Vietnam)
   workflow_dispatch: # Allow manual trigger
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: false
+        default: 'notify'
+        type: choice
+        options:
+          - notify
+          - summary
 
 jobs:
   run-bot:
@@ -21,12 +31,31 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
         
+      - name: Determine run mode
+        id: mode
+        run: |
+          # If triggered by schedule, check which cron triggered it
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
+              echo "mode=summary" >> $GITHUB_OUTPUT
+            else
+              echo "mode=notify" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "mode=${{ github.event.inputs.mode || 'notify' }}" >> $GITHUB_OUTPUT
+          fi
+        
       - name: Run script
         env:
           MOODLE_CALENDAR_URL: ${{ secrets.MOODLE_CALENDAR_URL }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_SERVER_ID: ${{ secrets.DISCORD_SERVER_ID }}
-        run: python main.py
+        run: |
+          if [ "${{ steps.mode.outputs.mode }}" = "summary" ]; then
+            python main.py --summary
+          else
+            python main.py
+          fi
         
       - name: Commit and push updated state
         run: |
