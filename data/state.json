@@ -6,7 +6,7 @@
         "57804@courses.fit.hcmus.edu.vn": {
             "notified_new": true,
             "reminded_3d": true,
-            "reminded_1d": false
+            "reminded_1d": true
         }
     }
 }
