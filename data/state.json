@@ -1,12 +1,3 @@
 {
-    "notified_items": [
-        "57754@courses.fit.hcmus.edu.vn"
-    ],
-    "events": {
-        "57804@courses.fit.hcmus.edu.vn": {
-            "notified_new": true,
-            "reminded_3d": true,
-            "reminded_1d": true
-        }
-    }
+    "events": {}
 }

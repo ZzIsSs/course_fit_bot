@@ -14,6 +14,7 @@ on:
         options:
           - notify
           - summary
+          - progress
 
 jobs:
   run-bot:
@@ -53,6 +54,8 @@ jobs:
         run: |
           if [ "${{ steps.mode.outputs.mode }}" = "summary" ]; then
             python main.py --summary
+          elif [ "${{ steps.mode.outputs.mode }}" = "progress" ]; then
+            python main.py --progress
           else
             python main.py
           fi
