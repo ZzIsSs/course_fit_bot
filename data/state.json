@@ -1,3 +1,24 @@
 {
-    "events": {}
+    "events": {
+        "57804@courses.fit.hcmus.edu.vn": {
+            "notified_new": true,
+            "reminded_3d": false,
+            "reminded_1d": false,
+            "scheduled_event_id": "1536434375959249027",
+            "message_id": "1536434373501522031",
+            "channel_id": "1536427305222545498",
+            "completed": false,
+            "completed_by": null
+        },
+        "57805@courses.fit.hcmus.edu.vn": {
+            "notified_new": true,
+            "reminded_3d": false,
+            "reminded_1d": false,
+            "scheduled_event_id": "1536434380929507411",
+            "message_id": "1536434378048016384",
+            "channel_id": "1536427305222545498",
+            "completed": false,
+            "completed_by": null
+        }
+    }
 }
