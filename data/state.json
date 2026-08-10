@@ -3,9 +3,9 @@
         "57804@courses.fit.hcmus.edu.vn": {
             "notified_new": true,
             "reminded_3d": true,
-            "reminded_1d": false,
+            "reminded_1d": true,
             "scheduled_event_id": "1536434375959249027",
-            "message_id": "1536447079537184919",
+            "message_id": "1536462510771937355",
             "channel_id": "1536427305222545498",
             "completed": true,
             "completed_by": "baonguyen03085"
