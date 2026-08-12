@@ -4,3 +4,4 @@ __pycache__/
 files.zip
 dev/
 data/calendar.ics
+.env

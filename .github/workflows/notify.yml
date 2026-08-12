@@ -2,7 +2,7 @@ name: Notification Bot
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Check deadlines every 30 minutes
+    - cron: '*/30 * * * *' # Check deadlines + announcements every 30 minutes
     - cron: '0 0 * * *'    # Daily summary at 00:00 UTC (7:00 AM Vietnam)
   workflow_dispatch: # Allow manual trigger
     inputs:
@@ -15,6 +15,7 @@ on:
           - notify
           - summary
           - progress
+          - announcements
 
 jobs:
   run-bot:
@@ -51,11 +52,14 @@ jobs:
           MOODLE_CALENDAR_URL: ${{ secrets.MOODLE_CALENDAR_URL }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_SERVER_ID: ${{ secrets.DISCORD_SERVER_ID }}
+          MOODLE_TOKEN: ${{ secrets.MOODLE_TOKEN }}
         run: |
           if [ "${{ steps.mode.outputs.mode }}" = "summary" ]; then
             python main.py --summary
           elif [ "${{ steps.mode.outputs.mode }}" = "progress" ]; then
             python main.py --progress
+          elif [ "${{ steps.mode.outputs.mode }}" = "announcements" ]; then
+            python main.py --announcements
           else
             python main.py
           fi

@@ -11,6 +11,7 @@ from src.discord_api import (
 )
 from src.moodle_parser import fetch_and_parse_events, slugify_channel_name
 from src.event_tracker import check_completions
+from src.announcement_tracker import check_moodle_updates
 
 # ==================== HÀM CHÍNH ====================
 
@@ -142,6 +143,16 @@ def run_main_bot():
                 sched_event = create_scheduled_event(bot_token, guild_id, event)
                 if sched_event:
                     evt_state['scheduled_event_id'] = sched_event['id']
+
+    # ===== Kiểm tra thông báo Moodle (nếu có token) =====
+    moodle_token = env.get('moodle_token')
+    if moodle_token:
+        logging.info("Bắt đầu kiểm tra thông báo Moodle...")
+        moodle_changed = check_moodle_updates(bot_token, guild_id, moodle_token, state)
+        if moodle_changed:
+            state_changed = True
+    else:
+        logging.info("Bỏ qua kiểm tra Moodle (chưa có MOODLE_TOKEN).")
 
     if state_changed:
         with open(STATE_FILE, 'w', encoding='utf-8') as f:
@@ -390,3 +401,38 @@ def send_progress_report():
 
     send_message(bot_token, channel_map[progress_channel], content)
     logging.info("Progress report sent successfully!")
+
+# ==================== KIỂM TRA THÔNG BÁO MOODLE ====================
+
+def check_announcements():
+    """Kiểm tra thông báo Moodle độc lập (dùng cho debug/test)."""
+    env = load_env()
+    if not env:
+        return
+
+    moodle_token = env.get('moodle_token')
+    if not moodle_token:
+        logging.error("MOODLE_TOKEN chưa được thiết lập. Không thể kiểm tra thông báo Moodle.")
+        return
+
+    bot_token = env['bot_token']
+    guild_id = env['guild_id']
+
+    # Load state
+    os.makedirs('data', exist_ok=True)
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, 'r', encoding='utf-8') as f:
+            try:
+                state = json.load(f)
+            except json.JSONDecodeError:
+                state = {}
+    else:
+        state = {}
+
+    changed = check_moodle_updates(bot_token, guild_id, moodle_token, state)
+
+    if changed:
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(state, f, indent=4)
+        logging.info("State file updated (Moodle announcements).")
+

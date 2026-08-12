@@ -15,17 +15,27 @@ STATE_FILE = 'data/state.json'
 def load_env():
     """Đọc và kiểm tra các biến môi trường cần thiết.
     Trả về dict chứa các giá trị, hoặc None nếu thiếu biến.
+
+    Biến bắt buộc: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, DISCORD_SERVER_ID
+    Biến tùy chọn: MOODLE_TOKEN (bật tính năng theo dõi thông báo Moodle)
     """
     calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
     bot_token = os.environ.get('DISCORD_BOT_TOKEN')
     guild_id = os.environ.get('DISCORD_SERVER_ID')
+    moodle_token = os.environ.get('MOODLE_TOKEN')
 
     if not all([calendar_url, bot_token, guild_id]):
         logging.error("Missing environment variables: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, or DISCORD_SERVER_ID")
         return None
 
+    if moodle_token:
+        logging.info("MOODLE_TOKEN detected — Moodle announcement tracking enabled.")
+    else:
+        logging.info("MOODLE_TOKEN not set — Moodle announcement tracking disabled.")
+
     return {
         'calendar_url': calendar_url,
         'bot_token': bot_token,
-        'guild_id': guild_id
+        'guild_id': guild_id,
+        'moodle_token': moodle_token,
     }
