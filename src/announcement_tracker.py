@@ -10,7 +10,6 @@ Và gửi thông báo vào kênh Discord tương ứng cho từng môn học.
 """
 import logging
 import re
-from datetime import datetime, timezone
 
 from src.moodle_api import (
     get_site_info, get_enrolled_courses, get_course_contents,
@@ -18,6 +17,11 @@ from src.moodle_api import (
 )
 from src.moodle_parser import extract_subject, slugify_channel_name
 from src.discord_api import get_guild_channels, create_channel, send_message
+from src.db_queries import (
+    get_or_create_course, get_known_modules_for_course,
+    upsert_module, has_modules, get_known_discussion_ids,
+    insert_discussion, update_course_crawl_time
+)
 
 # ==================== HẰNG SỐ ====================
 
@@ -47,47 +51,22 @@ MODULE_TYPES = {
 SKIP_MODULE_TYPES = {'label'}
 
 
-# ==================== KHỞI TẠO STATE ====================
-
-def _init_moodle_state(state):
-    """Khởi tạo phần 'moodle' trong state dict nếu chưa có."""
-    if "moodle" not in state:
-        state["moodle"] = {
-            "initialized": False,
-            "known_modules": {},
-            "known_discussions": [],
-            "last_check": 0
-        }
-    # Backward compatibility
-    moodle = state["moodle"]
-    moodle.setdefault("initialized", False)
-    moodle.setdefault("known_modules", {})
-    moodle.setdefault("known_discussions", [])
-    moodle.setdefault("last_check", 0)
-    return moodle
-
-
 # ==================== LOGIC CHÍNH ====================
 
-def check_moodle_updates(bot_token, guild_id, moodle_token, state):
+def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
     """Quét Moodle để phát hiện nội dung mới và gửi thông báo Discord.
 
     Args:
         bot_token: Discord Bot token.
         guild_id: Discord Server (Guild) ID.
         moodle_token: Moodle Web Services token.
-        state: Dict state chung (đọc/ghi phần state['moodle']).
-
-    Returns:
-        True nếu state đã thay đổi (cần lưu lại), False nếu không.
+        conn: Database connection.
     """
-    moodle_state = _init_moodle_state(state)
-
     # === Bước 1: Xác thực token ===
     site_info = get_site_info(moodle_token)
     if not site_info or 'userid' not in site_info:
         logging.error("Không thể xác thực Moodle token. Token có thể đã hết hạn.")
-        return False
+        return
 
     userid = site_info['userid']
     username = site_info.get('fullname', 'Unknown')
@@ -97,34 +76,43 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
     courses = get_enrolled_courses(moodle_token, userid)
     if not courses:
         logging.warning("Moodle: Không tìm thấy khóa học nào.")
-        return False
+        return
 
     logging.info(f"Moodle: Tìm thấy {len(courses)} khóa học.")
 
-    # === Bước 3: Quét toàn bộ nội dung ===
-    current_modules = {}      # "courseid_moduleid" → timemodified (int)
-    current_discussions = set()  # set of discussion ID strings
+    # === Bước 3: Kiểm tra lần chạy đầu tiên ===
+    is_first_run = not has_modules(conn)
+
+    # Lấy known discussions từ DB
+    known_disc_ids = get_known_discussion_ids(conn)
 
     new_modules = []          # (course_info, module_dict)
     updated_modules = []      # (course_info, module_dict)
     new_discussions = []      # (course_info, discussion_dict)
 
-    is_first_run = not moodle_state["initialized"]
-
+    # === Bước 4: Quét toàn bộ nội dung ===
     for course in courses:
         course_id = course['id']
         course_shortname = course.get('shortname', '')
         course_fullname = course.get('fullname', course_shortname)
         subject_code = extract_subject(course_shortname)
 
+        # Tạo hoặc tìm khóa học trong DB
+        db_course_id = get_or_create_course(conn, subject_code, lms_courses_id=course_id)
+        update_course_crawl_time(conn, db_course_id)
+
         course_info = {
             'id': course_id,
+            'db_id': db_course_id,
             'shortname': course_shortname,
             'fullname': course_fullname,
             'subject': subject_code,
         }
 
-        # 3a: Quét nội dung khóa học (files, assignments, quizzes, ...)
+        # Lấy known modules cho course này từ DB
+        known_modules = get_known_modules_for_course(conn, db_course_id)
+
+        # 4a: Quét nội dung khóa học (files, assignments, quizzes, ...)
         contents = get_course_contents(moodle_token, course_id)
         if contents:
             for section in contents:
@@ -135,7 +123,7 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
                     if modname in SKIP_MODULE_TYPES:
                         continue
 
-                    mod_key = f"{course_id}_{module['id']}"
+                    lms_mod_id = str(module['id'])
 
                     # Lấy timemodified mới nhất (so sánh cả module và file contents)
                     mod_time = module.get('timemodified', 0) or 0
@@ -144,17 +132,21 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
                         if file_time > mod_time:
                             mod_time = file_time
 
-                    current_modules[mod_key] = mod_time
+                    # Upsert module vào DB
+                    upsert_module(
+                        conn, db_course_id, lms_mod_id,
+                        modname, module.get('name', 'N/A'), mod_time
+                    )
 
-                    # So sánh với state cũ (chỉ khi không phải lần chạy đầu)
+                    # So sánh với dữ liệu cũ (chỉ khi không phải lần chạy đầu)
                     if not is_first_run:
-                        old_time = moodle_state["known_modules"].get(mod_key, None)
+                        old_time = known_modules.get(lms_mod_id, None)
                         if old_time is None:
                             new_modules.append((course_info, module))
                         elif mod_time > old_time:
                             updated_modules.append((course_info, module))
 
-        # 3b: Quét bài đăng trên diễn đàn
+        # 4b: Quét bài đăng trên diễn đàn
         forums = get_course_forums(moodle_token, course_id)
         if forums:
             for forum in forums:
@@ -162,32 +154,33 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
                 if discussions:
                     for disc in discussions:
                         disc_id = str(disc.get('discussion', disc.get('id', '')))
-                        current_discussions.add(disc_id)
+
+                        # Insert discussion vào DB (bỏ qua nếu đã tồn tại)
+                        insert_discussion(
+                            conn, db_course_id, disc_id,
+                            forum.get('name', 'Forum'),
+                            disc.get('subject', disc.get('name', 'N/A')),
+                            disc.get('userfullname', 'N/A')
+                        )
 
                         if not is_first_run:
-                            if disc_id not in moodle_state["known_discussions"]:
+                            if disc_id not in known_disc_ids:
                                 new_discussions.append((course_info, {
                                     **disc,
                                     'forum_name': forum.get('name', 'Forum'),
                                 }))
 
-    # === Bước 4: Cập nhật state ===
-    moodle_state["known_modules"] = current_modules
-    moodle_state["known_discussions"] = list(current_discussions)
-    moodle_state["last_check"] = int(datetime.now(timezone.utc).timestamp())
-    moodle_state["initialized"] = True
-
+    # === Bước 5: Xử lý kết quả ===
     if is_first_run:
         logging.info(
-            f"Moodle tracker đã khởi tạo: {len(current_modules)} modules, "
-            f"{len(current_discussions)} discussions từ {len(courses)} khóa học."
+            f"Moodle tracker đã khởi tạo từ {len(courses)} khóa học."
         )
-        return True  # State thay đổi, cần lưu
+        return
 
     total_changes = len(new_modules) + len(updated_modules) + len(new_discussions)
     if total_changes == 0:
         logging.info("Moodle: Không có cập nhật mới.")
-        return False
+        return
 
     logging.info(
         f"Moodle: Phát hiện {total_changes} thay đổi — "
@@ -195,7 +188,7 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
         f"{len(new_discussions)} bài đăng mới."
     )
 
-    # === Bước 5: Gửi thông báo Discord ===
+    # === Bước 6: Gửi thông báo Discord ===
     channels = get_guild_channels(bot_token, guild_id)
     channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0}
 
@@ -213,8 +206,6 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, state):
         _send_discussion_notification(
             bot_token, guild_id, channel_map, course_info, disc
         )
-
-    return True
 
 
 # ==================== GỬI THÔNG BÁO ====================

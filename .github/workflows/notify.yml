@@ -53,6 +53,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_SERVER_ID: ${{ secrets.DISCORD_SERVER_ID }}
           MOODLE_TOKEN: ${{ secrets.MOODLE_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ "${{ steps.mode.outputs.mode }}" = "summary" ]; then
             python main.py --summary
@@ -63,11 +64,3 @@ jobs:
           else
             python main.py
           fi
-        
-      - name: Commit and push updated state
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/state.json
-          git commit -m "Update state.json" || exit 0
-          git push
