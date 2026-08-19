@@ -8,6 +8,11 @@ import requests
 
 MOODLE_API_BASE = "https://courses.fit.hcmus.edu.vn/webservice/rest/server.php"
 
+# Ngụy trang User-Agent để vượt tường lửa (WAF) của trường
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 MoodleMobile'
+}
+
 
 def _call_api(token, function, **params):
     """Gọi một Moodle Web Services API function.
@@ -28,7 +33,7 @@ def _call_api(token, function, **params):
     all_params.update(params)
 
     try:
-        response = requests.get(MOODLE_API_BASE, params=all_params, timeout=30)
+        response = requests.get(MOODLE_API_BASE, params=all_params, headers=HEADERS, timeout=30)
         response.raise_for_status()
         data = response.json()
 
