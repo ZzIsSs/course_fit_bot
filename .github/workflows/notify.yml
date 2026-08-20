@@ -16,6 +16,7 @@ on:
           - summary
           - progress
           - announcements
+          - sync-channels
 
 jobs:
   run-bot:
@@ -61,6 +62,8 @@ jobs:
             python main.py --progress
           elif [ "${{ steps.mode.outputs.mode }}" = "announcements" ]; then
             python main.py --announcements
+          elif [ "${{ steps.mode.outputs.mode }}" = "sync-channels" ]; then
+            python main.py --sync-channels
           else
             python main.py
           fi
