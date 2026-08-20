@@ -16,7 +16,7 @@ from src.moodle_api import (
     get_course_forums, get_forum_discussions
 )
 from src.moodle_parser import extract_subject, extract_display_name, slugify_channel_name
-from src.discord_api import get_guild_channels, create_channel, send_message
+from src.discord_api import get_guild_channels, create_channel, send_message, rename_channel
 from src.db_queries import (
     get_or_create_course, get_known_modules_for_course,
     upsert_module, has_modules, get_known_discussion_ids,
@@ -233,7 +233,14 @@ def _ensure_channel(bot_token, guild_id, channel_map, subject_code, display_name
     # Fallback: thử tìm kênh cũ (chỉ mã môn)
     old_chan_name = slugify_channel_name(subject_code)
     if old_chan_name in channel_map:
-        return channel_map[old_chan_name]
+        old_id = channel_map[old_chan_name]
+        # Phát hiện tên cũ, tiến hành đổi tên sang format mới
+        if old_chan_name != chan_name:
+            rename_channel(bot_token, old_id, chan_name)
+            # Cập nhật lại cache (channel_map)
+            channel_map[chan_name] = old_id
+            del channel_map[old_chan_name]
+        return old_id
 
     # Tạo kênh mới với tên format mới
     new_channel = create_channel(bot_token, guild_id, chan_name)
