@@ -8,13 +8,13 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 
 # Thêm project root vào path
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.moodle_api import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )
-from src.moodle_parser import extract_subject
+from src.moodle_parser import extract_subject, extract_display_name
 
 
 def main():
@@ -56,8 +56,18 @@ def main():
 
     print(f"✅ Tìm thấy {len(courses)} khóa học:\n")
     for i, course in enumerate(courses, 1):
-        subject = extract_subject(course.get('shortname', ''))
-        print(f"   {i}. [{subject}] {course.get('fullname', 'N/A')}")
+        course_fullname = course.get('fullname', '')
+        course_shortname = course.get('shortname', '')
+        
+        display_name = extract_display_name(course_fullname)
+        subject_code = extract_subject(course_shortname)
+        if subject_code == "General" and display_name:
+            subject_code = display_name
+            
+        from src.moodle_parser import slugify_channel_name
+        chan_name = slugify_channel_name(subject_code, display_name)
+        
+        print(f"   {i}. [Kênh: #{chan_name}] {course_fullname}")
         print(f"      ID: {course['id']} | Shortname: {course.get('shortname', 'N/A')}")
 
     # === Test 3: Nội dung khóa học đầu tiên ===

@@ -3,6 +3,7 @@
 create table courses(
     courses_id serial primary key,
     course_name varchar(255) not null unique,
+    display_name varchar(255),               -- Tên tiếng Việt hiển thị
     lms_courses_id varchar(50) not null unique,
     chat_id varchar(50) unique,              -- Discord channel ID, NULL khi chưa tạo channel
     last_crawled_time timestamp

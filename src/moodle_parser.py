@@ -39,22 +39,22 @@ def extract_display_name(fullname):
     Ví dụ:
         'CQ2526HK2_CSC10014_CQ2024/2 - Nhập Môn Trí Tuệ Nhân Tạo'
             → 'Nhập Môn Trí Tuệ Nhân Tạo'
-        'CQ2526HK2_CSC10014_CQ2024/2'
-            → None (không có tên TV)
+        'Phương pháp lập trình hướng đối tượng - CQ2024/3'
+            → 'Phương pháp lập trình hướng đối tượng'
     """
     if not fullname:
         return None
 
-    # Pattern: tìm phần sau dấu " - " (tên tiếng Việt)
-    match = re.search(r'\s*-\s+(.+)$', fullname)
-    if match:
-        name = match.group(1).strip()
-        # Bỏ qua nếu tên chỉ chứa mã lớp (CQ..., CLC..., VP...)
-        if re.match(r'^(CQ|CLC|VP|CTTT)\d', name):
-            return None
-        return name if name else None
+    # Xóa các đuôi mã lớp (như - CQ2024/3) ở cuối chuỗi
+    clean_name = re.sub(r'\s*-\s*(CQ|CLC|VP|CTTT)\d{4}.*$', '', fullname).strip()
 
-    return None
+    # Nếu chuỗi còn lại có dạng "Mã Môn - Tên Môn"
+    if ' - ' in clean_name:
+        parts = clean_name.split(' - ')
+        # Trả về phần sau cùng (giả định tên môn thường nằm sau mã môn)
+        return parts[-1].strip()
+
+    return clean_name if clean_name else None
 
 
 def abbreviate_name(display_name):

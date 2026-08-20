@@ -93,10 +93,18 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
     # === Bước 4: Quét toàn bộ nội dung ===
     for course in courses:
         course_id = course['id']
+        course_fullname = course.get('fullname', '')
         course_shortname = course.get('shortname', '')
-        course_fullname = course.get('fullname', course_shortname)
-        subject_code = extract_subject(course_shortname)
+        
+        # Lấy tên hiển thị (tiếng Việt) từ fullname
         display_name = extract_display_name(course_fullname)
+
+        # Lấy mã môn (VD: CSC10014) từ shortname
+        subject_code = extract_subject(course_shortname)
+        
+        # Nếu shortname bị lỗi không ra được mã môn, thì lấy tạm display_name làm mã môn luôn
+        if subject_code == "General" and display_name:
+            subject_code = display_name
 
         # Tạo hoặc tìm khóa học trong DB (cập nhật display_name nếu có)
         db_course_id = get_or_create_course(
