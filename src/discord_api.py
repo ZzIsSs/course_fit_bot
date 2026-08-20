@@ -49,6 +49,18 @@ def create_channel(token, guild_id, channel_name):
         logging.error(f"Failed to create channel {channel_name}: {response.status_code} {response.text}")
         return None
 
+def rename_channel(token, channel_id, new_name):
+    """Đổi tên kênh Discord."""
+    url = f"{DISCORD_API_BASE}/channels/{channel_id}"
+    payload = {"name": new_name}
+    response = requests.patch(url, headers=get_headers(token), json=payload)
+    if response.status_code == 200:
+        logging.info(f"Renamed channel {channel_id} → {new_name}")
+        return response.json()
+    else:
+        logging.error(f"Failed to rename channel {channel_id}: {response.status_code} {response.text}")
+        return None
+
 def send_message(token, channel_id, content):
     url = f"{DISCORD_API_BASE}/channels/{channel_id}/messages"
     payload = {"content": content}

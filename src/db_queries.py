@@ -12,33 +12,43 @@ from src.database import execute, fetch_one, fetch_all
 
 # ==================== COURSES ====================
 
-def get_or_create_course(conn, course_name, lms_courses_id=None):
+def get_or_create_course(conn, course_name, lms_courses_id=None, display_name=None):
     """Tìm hoặc tạo khóa học theo tên (subject code).
 
     Ưu tiên tìm theo course_name. Nếu có lms_courses_id mới thì cập nhật.
+    Nếu có display_name thì cập nhật tên hiển thị tiếng Việt.
     Returns: courses_id (int)
     """
     # Tìm theo tên môn (subject code)
     row = fetch_one(conn,
-        "SELECT courses_id, lms_courses_id FROM courses WHERE course_name = %s",
+        "SELECT courses_id, lms_courses_id, display_name FROM courses WHERE course_name = %s",
         (course_name,))
 
     if row:
         # Cập nhật lms_courses_id nếu có giá trị thực từ Moodle API
+        updates = []
+        params = []
         if lms_courses_id and str(lms_courses_id) != row.get('lms_courses_id'):
+            updates.append("lms_courses_id = %s")
+            params.append(str(lms_courses_id))
+        if display_name and display_name != row.get('display_name'):
+            updates.append("display_name = %s")
+            params.append(display_name)
+        if updates:
+            params.append(row['courses_id'])
             execute(conn,
-                "UPDATE courses SET lms_courses_id = %s WHERE courses_id = %s",
-                (str(lms_courses_id), row['courses_id']))
+                f"UPDATE courses SET {', '.join(updates)} WHERE courses_id = %s",
+                tuple(params))
         return row['courses_id']
 
     # Tạo mới — dùng subject code làm lms_courses_id tạm nếu chưa có
     effective_lms_id = str(lms_courses_id) if lms_courses_id else course_name
     row = fetch_one(conn,
-        """INSERT INTO courses (course_name, lms_courses_id)
-           VALUES (%s, %s)
+        """INSERT INTO courses (course_name, lms_courses_id, display_name)
+           VALUES (%s, %s, %s)
            ON CONFLICT (course_name) DO UPDATE SET course_name = EXCLUDED.course_name
            RETURNING courses_id""",
-        (course_name, effective_lms_id))
+        (course_name, effective_lms_id, display_name))
     return row['courses_id']
 
 
@@ -54,6 +64,26 @@ def update_course_crawl_time(conn, courses_id):
     execute(conn,
         "UPDATE courses SET last_crawled_time = now() WHERE courses_id = %s",
         (courses_id,))
+
+
+def get_all_courses(conn):
+    """Lấy toàn bộ courses (phục vụ sync kênh).
+
+    Returns: list of dicts chứa courses_id, course_name, display_name, chat_id, lms_courses_id.
+    """
+    return fetch_all(conn,
+        "SELECT courses_id, course_name, display_name, chat_id, lms_courses_id FROM courses")
+
+
+def get_course_display_name(conn, course_name):
+    """Lấy display_name của một course theo course_name (subject code).
+
+    Returns: display_name (str) hoặc None.
+    """
+    row = fetch_one(conn,
+        "SELECT display_name FROM courses WHERE course_name = %s",
+        (course_name,))
+    return row['display_name'] if row else None
 
 
 # ==================== DEADLINES ====================

@@ -7,13 +7,18 @@ from src.database import get_db
 from src.db_queries import (
     get_or_create_course, get_deadline_by_lms_id, insert_deadline,
     update_deadline_notified, update_deadline_discord_info,
-    get_all_deadlines_with_course, insert_notification
+    get_all_deadlines_with_course, insert_notification,
+    update_course_chat_id, get_all_courses, get_course_display_name
 )
 from src.discord_api import (
-    get_bot_user, get_guild_channels, create_channel,
+    get_bot_user, get_guild_channels, create_channel, rename_channel,
     send_message, add_reaction, create_scheduled_event
 )
-from src.moodle_parser import fetch_and_parse_events, slugify_channel_name
+from src.moodle_parser import (
+    fetch_and_parse_events, slugify_channel_name,
+    extract_display_name, extract_subject
+)
+from src.moodle_api import get_site_info, get_enrolled_courses
 from src.event_tracker import check_completions
 from src.announcement_tracker import check_moodle_updates
 
@@ -101,16 +106,23 @@ def run_main_bot():
                 msg_type = "1_DAY"
 
             if msg_type:
-                chan_name = slugify_channel_name(event['subject'])
+                # Lấy display_name từ DB (nếu đã có từ Moodle sync)
+                display_name = get_course_display_name(conn, event['subject'])
+                chan_name = slugify_channel_name(event['subject'], display_name)
+                old_chan_name = slugify_channel_name(event['subject'])
 
-                if chan_name not in channel_map:
+                if chan_name in channel_map:
+                    target_chan_id = channel_map[chan_name]
+                elif old_chan_name in channel_map:
+                    # Fallback: kênh cũ (chỉ mã môn) vẫn tồn tại
+                    target_chan_id = channel_map[old_chan_name]
+                else:
                     new_channel = create_channel(bot_token, guild_id, chan_name)
                     if new_channel:
                         channel_map[chan_name] = new_channel['id']
+                        target_chan_id = new_channel['id']
                     else:
                         continue
-
-                target_chan_id = channel_map[chan_name]
 
                 event_url = _build_event_url(eid)
                 deadline_local = event['deadline'].astimezone(LOCAL_TZ).strftime('%d/%m/%Y %H:%M')
@@ -394,3 +406,116 @@ def check_announcements():
         check_moodle_updates(bot_token, guild_id, moodle_token, conn)
 
     logging.info("Moodle announcement check completed.")
+
+
+# ==================== ĐỒNG BỘ KÊNH DISCORD ====================
+
+def sync_channels():
+    """Đồng bộ kênh Discord từ danh sách môn học trên Moodle.
+
+    Luồng xử lý:
+    1. Gọi Moodle API lấy danh sách tất cả môn đang học.
+    2. Trích mã môn + tên tiếng Việt, lưu vào DB (display_name).
+    3. Tạo kênh Discord mới hoặc rename kênh cũ theo format: viết-tắt-mã-môn
+       (ví dụ: nmttnt-csc10014).
+    """
+    env = load_env()
+    if not env:
+        return
+
+    moodle_token = env.get('moodle_token')
+    if not moodle_token:
+        logging.error("MOODLE_TOKEN chưa được thiết lập. Không thể đồng bộ kênh.")
+        return
+
+    bot_token = env['bot_token']
+    guild_id = env['guild_id']
+    database_url = env['database_url']
+
+    # === Bước 1: Xác thực Moodle ===
+    site_info = get_site_info(moodle_token)
+    if not site_info or 'userid' not in site_info:
+        logging.error("Không thể xác thực Moodle token.")
+        return
+
+    userid = site_info['userid']
+    logging.info(f"Moodle: Đã xác thực — {site_info.get('fullname', '?')} (ID: {userid})")
+
+    # === Bước 2: Lấy danh sách môn học ===
+    courses = get_enrolled_courses(moodle_token, userid)
+    if not courses:
+        logging.warning("Moodle: Không tìm thấy khóa học nào.")
+        return
+
+    logging.info(f"Moodle: Tìm thấy {len(courses)} khóa học.")
+
+    # === Bước 3: Lấy danh sách kênh Discord hiện tại ===
+    discord_channels = get_guild_channels(bot_token, guild_id)
+    # Map: channel_name → channel_id (chỉ text channels)
+    channel_map = {c['name']: c['id'] for c in discord_channels if c.get('type') == 0}
+    # Map: channel_id → channel_name (để tra ngược)
+    channel_id_to_name = {c['id']: c['name'] for c in discord_channels if c.get('type') == 0}
+
+    stats = {'created': 0, 'renamed': 0, 'existed': 0, 'skipped': 0}
+
+    with get_db(database_url) as conn:
+        for course in courses:
+            course_id = course['id']
+            shortname = course.get('shortname', '')
+            fullname = course.get('fullname', shortname)
+
+            # Trích mã môn + tên tiếng Việt
+            subject_code = extract_subject(shortname)
+            display_name = extract_display_name(fullname)
+
+            if not subject_code or subject_code == 'General':
+                logging.debug(f"Bỏ qua khóa học không rõ mã: {fullname}")
+                stats['skipped'] += 1
+                continue
+
+            # Cập nhật DB (tạo mới hoặc cập nhật display_name)
+            db_course_id = get_or_create_course(
+                conn, subject_code, lms_courses_id=course_id, display_name=display_name
+            )
+
+            # Tên kênh mới theo format viết-tắt-mã-môn
+            new_chan_name = slugify_channel_name(subject_code, display_name)
+            # Tên kênh cũ (chỉ mã môn, không có viết tắt)
+            old_chan_name = slugify_channel_name(subject_code)
+
+            if new_chan_name in channel_map:
+                # Kênh đã tồn tại với tên đúng format
+                logging.info(f"Kênh #{new_chan_name} đã tồn tại.")
+                # Đảm bảo chat_id trong DB đúng
+                update_course_chat_id(conn, db_course_id, channel_map[new_chan_name])
+                stats['existed'] += 1
+
+            elif old_chan_name in channel_map and old_chan_name != new_chan_name:
+                # Kênh cũ tồn tại với tên ngắn → rename
+                old_chan_id = channel_map[old_chan_name]
+                result = rename_channel(bot_token, old_chan_id, new_chan_name)
+                if result:
+                    # Cập nhật channel_map
+                    channel_map[new_chan_name] = old_chan_id
+                    del channel_map[old_chan_name]
+                    update_course_chat_id(conn, db_course_id, old_chan_id)
+                    logging.info(f"Đã rename #{old_chan_name} → #{new_chan_name}")
+                    stats['renamed'] += 1
+                else:
+                    stats['skipped'] += 1
+
+            else:
+                # Tạo kênh mới
+                new_channel = create_channel(bot_token, guild_id, new_chan_name)
+                if new_channel:
+                    channel_map[new_chan_name] = new_channel['id']
+                    update_course_chat_id(conn, db_course_id, new_channel['id'])
+                    stats['created'] += 1
+                else:
+                    stats['skipped'] += 1
+
+    logging.info(
+        f"Đồng bộ kênh hoàn tất: "
+        f"{stats['created']} tạo mới, {stats['renamed']} rename, "
+        f"{stats['existed']} đã tồn tại, {stats['skipped']} bỏ qua."
+    )

@@ -6,21 +6,76 @@ from datetime import datetime, timezone
 
 # ==================== XỬ LÝ CHUỖI ====================
 
-def slugify_channel_name(name):
-    """Chuyển tên môn học thành tên kênh hợp lệ cho Discord.
-    Bỏ dấu tiếng Việt, chuyển thường, thay ký tự đặc biệt bằng '-'.
-    Ví dụ: 'Toán Rời Rạc' → 'toan-roi-rac'
-           'CSC10014' → 'csc10014'
-    """
-    # Bỏ dấu tiếng Việt
-    normalized = unicodedata.normalize("NFD", name)
+def _remove_accents(text):
+    """Bỏ dấu tiếng Việt khỏi chuỗi."""
+    normalized = unicodedata.normalize("NFD", text)
     no_accents = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
     no_accents = no_accents.replace("đ", "d").replace("Đ", "D")
-    # Chuyển thường, thay ký tự đặc biệt bằng '-'
-    slug = no_accents.lower()
-    slug = re.sub(r'[^a-z0-9]+', '-', slug)
-    slug = slug.strip('-')
-    return slug if slug else "general"
+    return no_accents
+
+
+def slugify_channel_name(subject_code, display_name=None):
+    """Chuyển tên môn học thành tên kênh hợp lệ cho Discord.
+
+    Nếu có display_name: format 'viết-tắt-tên-csc10014'
+        Ví dụ: ('CSC10014', 'Nhập Môn Trí Tuệ Nhân Tạo') → 'nmttnt-csc10014'
+    Nếu không có display_name: chỉ dùng subject_code
+        Ví dụ: ('CSC10014', None) → 'csc10014'
+    """
+    code_slug = _remove_accents(subject_code).lower()
+    code_slug = re.sub(r'[^a-z0-9]+', '-', code_slug).strip('-')
+
+    if display_name:
+        abbr = abbreviate_name(display_name)
+        if abbr:
+            return f"{abbr.lower()}-{code_slug}"
+
+    return code_slug if code_slug else "general"
+
+
+def extract_display_name(fullname):
+    """Trích tên tiếng Việt từ fullname của Moodle API.
+
+    Ví dụ:
+        'CQ2526HK2_CSC10014_CQ2024/2 - Nhập Môn Trí Tuệ Nhân Tạo'
+            → 'Nhập Môn Trí Tuệ Nhân Tạo'
+        'CQ2526HK2_CSC10014_CQ2024/2'
+            → None (không có tên TV)
+    """
+    if not fullname:
+        return None
+
+    # Pattern: tìm phần sau dấu " - " (tên tiếng Việt)
+    match = re.search(r'\s*-\s+(.+)$', fullname)
+    if match:
+        name = match.group(1).strip()
+        # Bỏ qua nếu tên chỉ chứa mã lớp (CQ..., CLC..., VP...)
+        if re.match(r'^(CQ|CLC|VP|CTTT)\d', name):
+            return None
+        return name if name else None
+
+    return None
+
+
+def abbreviate_name(display_name):
+    """Tạo viết tắt từ tên tiếng Việt (lấy chữ cái đầu mỗi từ).
+
+    Ví dụ:
+        'Nhập Môn Trí Tuệ Nhân Tạo' → 'NMTTNT'
+        'Toán Rời Rạc'              → 'TRR'
+        'Lập Trình Hướng Đối Tượng' → 'LTHDT'
+    """
+    if not display_name:
+        return None
+
+    # Bỏ dấu trước khi lấy chữ cái đầu
+    clean = _remove_accents(display_name)
+    words = clean.split()
+    if not words:
+        return None
+
+    abbr = "".join(w[0].upper() for w in words if w and w[0].isalpha())
+    return abbr if abbr else None
 
 def extract_subject(category):
     """Trích xuất tên môn học từ trường CATEGORIES của ICS.
