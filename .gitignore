@@ -1,7 +1,18 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-files.zip
-dev/
-data/calendar.ics
+
+# Environment
 .env
+
+# Runtime data
+data/calendar.ics
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

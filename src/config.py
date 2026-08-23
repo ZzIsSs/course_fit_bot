@@ -13,11 +13,15 @@ LOCAL_TZ = timezone(timedelta(hours=7))
 
 def load_env():
     """Đọc và kiểm tra các biến môi trường cần thiết.
-    Trả về dict chứa các giá trị, hoặc None nếu thiếu biến.
-
+    Hỗ trợ đọc từ file .env cục bộ nếu có.
     Biến bắt buộc: MOODLE_CALENDAR_URL, DISCORD_BOT_TOKEN, DISCORD_SERVER_ID, DATABASE_URL
     Biến tùy chọn: MOODLE_TOKEN (bật tính năng theo dõi thông báo Moodle)
     """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # Nếu không cài python-dotenv hoặc chạy trên GitHub Actions thì bỏ qua
     calendar_url = os.environ.get('MOODLE_CALENDAR_URL')
     bot_token = os.environ.get('DISCORD_BOT_TOKEN')
     guild_id = os.environ.get('DISCORD_SERVER_ID')
