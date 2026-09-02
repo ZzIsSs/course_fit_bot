@@ -35,19 +35,48 @@ def get_guild_channels(token, guild_id):
         logging.error(f"Failed to fetch channels: {response.status_code} {response.text}")
         return []
 
-def create_channel(token, guild_id, channel_name):
+def create_channel(token, guild_id, channel_name, parent_id=None):
     url = f"{DISCORD_API_BASE}/guilds/{guild_id}/channels"
     payload = {
         "name": channel_name,
-        "type": 0  # 0 is Text Channel
+        "type": 0  # 0 = Text Channel
     }
+    if parent_id:
+        payload["parent_id"] = parent_id
     response = requests.post(url, headers=get_headers(token), json=payload)
     if response.status_code == 201:
-        logging.info(f"Created channel {channel_name}")
+        loc = f" (trong category {parent_id})" if parent_id else ""
+        logging.info(f"Created channel {channel_name}{loc}")
         return response.json()
     else:
         logging.error(f"Failed to create channel {channel_name}: {response.status_code} {response.text}")
         return None
+
+def create_category(token, guild_id, category_name):
+    """Tạo Category (nhóm kênh) mới trên Discord."""
+    url = f"{DISCORD_API_BASE}/guilds/{guild_id}/channels"
+    payload = {"name": category_name, "type": 4}  # 4 = GUILD_CATEGORY
+    response = requests.post(url, headers=get_headers(token), json=payload)
+    if response.status_code == 201:
+        logging.info(f"Created category '{category_name}'")
+        return response.json()
+    else:
+        logging.error(f"Failed to create category '{category_name}': {response.status_code} {response.text}")
+        return None
+
+def resolve_category(token, guild_id, category_map, category_name):
+    """Tìm category theo tên trong cache; nếu chưa có thì tạo mới trên Discord.
+    
+    category_map: dict {tên: id}, build 1 lần/lượt chạy (lọc type == 4 từ
+    get_guild_channels) để tránh gọi API dư thừa và tránh tạo trùng category.
+    """
+    if category_name in category_map:
+        return category_map[category_name]
+    new_cat = create_category(token, guild_id, category_name)
+    if new_cat:
+        category_map[category_name] = new_cat['id']
+        return new_cat['id']
+    return None
 
 def rename_channel(token, channel_id, new_name):
     """Đổi tên kênh Discord."""

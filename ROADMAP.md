@@ -11,14 +11,26 @@ Hiện tại bot đang hoạt động theo cơ chế một chiều (chạy ngầ
 - *Cách triển khai:* Sử dụng kiến trúc Webhook (nhận sự kiện từ Discord API) và deploy miễn phí trên Vercel, Render hoặc Cloudflare Workers để vẫn giữ được tính chất "Serverless".
 
 ## 2. Quản lý Deadline nội bộ (Custom Deadlines)
-Moodle chỉ cung cấp deadline của môn học, nhưng khi làm việc nhóm, sinh viên thường có các mốc thời gian riêng.
-- **Tính năng**: Cho phép thành viên dùng lệnh (ví dụ: `/add_deadline`) để thêm các mốc thời gian nội bộ (VD: "Chốt chia việc đồ án", "Họp nhóm tối nay", "Hạn chót gửi code cho Leader").
-- **Lợi ích**: Bot sẽ quản lý, nhắc nhở và đưa các deadline này vào báo cáo tiến độ hằng ngày chung với deadline từ Moodle.
+Moodle chỉ cung cấp hạn chót nộp bài cuối cùng của môn học. Tuy nhiên, khi làm bài tập lớn (Đồ án/Project), một nhóm thường cần chia nhỏ công việc thành nhiều mốc thời gian (milestones) khác nhau.
 
-## 3. Tự động chia Thread để thảo luận bài tập
-Thay vì gửi một tin nhắn báo deadline chung chung vào channel (dễ làm trôi các tin nhắn khác):
-- **Tính năng**: Mỗi khi có bài tập mới, bot tự động tạo một **Thread (luồng tin nhắn)** đính kèm với thông báo đó (ví dụ: `Thread: Thảo luận Bài tập thực hành 1`).
-- **Lợi ích**: Thành viên có thể gửi tài liệu, chia sẻ cách giải, hoặc đặt câu hỏi trực tiếp trong Thread đó, giúp channel luôn gọn gàng và dễ tra cứu.
+**Chi tiết tính năng & Cách hoạt động:**
+- Thành viên có thể dùng lệnh `/add_deadline` trực tiếp trên Discord. Bot sẽ mở ra một Form (Modal) để nhập:
+  - Tên công việc (VD: "Chốt chia việc", "Nộp bản nháp Word", "Họp review code").
+  - Kênh/Môn học liên quan.
+  - Hạn chót (Ngày & Giờ).
+  - Ai phụ trách? (Tag user Discord để nhắc tên trực tiếp).
+- **Lưu trữ & Nhắc nhở đồng bộ:** Các deadline này được lưu chung vào Database (ví dụ thêm trường `source = 'custom'`). Bot sẽ tự động áp dụng quy trình nhắc nhở (nhắc trước 3 ngày, khẩn cấp 1 ngày) và cho phép thả reaction ✅ để đánh dấu hoàn thành y hệt như deadline tải về từ Moodle.
+- **Tích hợp báo cáo:** Trong báo cáo tóm tắt hằng ngày (Daily Summary), các "Deadline nội bộ" sẽ được liệt kê cùng để leader dễ dàng đôn đốc tiến độ nhóm.
+
+## 3. Tự động tạo Thread Thảo luận bài tập (Auto-Threading)
+Hiện tại, khi bot thông báo có bài tập mới vào channel (ví dụ `#khtn-toan`), tin nhắn này rất dễ bị trôi nếu mọi người bàn luận quá nhiều về cách làm bài ngay bên dưới.
+
+**Chi tiết tính năng & Lợi ích:**
+- **Tự động hóa luồng (Workflow):** Sử dụng API của Discord (`Create Thread`). Ngay sau khi bot gửi tin báo "🚨 DEADLINE MỚI", bot sẽ gọi API để tạo tự động một Thread đính kèm ngay dưới tin nhắn đó với tên `💬 Thảo luận: [Tên Bài Tập]`.
+- **Lợi ích thực tế:**
+  - **Gom nhóm thông tin:** Mọi thắc mắc, link tài liệu tham khảo, hay file code nháp liên quan đến bài tập đó đều được gửi vào trong Thread này.
+  - **Giữ Channel gọn gàng:** Kênh chat chính của môn học sẽ chỉ chứa các tin nhắn quan trọng (cột mốc deadline, thông báo từ giảng viên), rất dễ lướt lên để tìm lại thông tin.
+  - **Focus mục tiêu:** Ai làm bài nào thì join vào Thread bài đó, tránh bị loãng thông báo (Noti) cho những bạn không làm phần việc đó.
 
 ## 4. Tích hợp AI (LLM) để tóm tắt thông báo
 Giảng viên đôi khi gửi những thông báo (Announcements) rất dài trên diễn đàn Moodle.

@@ -15,12 +15,13 @@ from src.moodle_api import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )
-from src.moodle_parser import extract_subject, extract_display_name, slugify_channel_name
-from src.discord_api import get_guild_channels, create_channel, send_message, rename_channel
+from src.moodle_parser import extract_subject, extract_display_name, slugify_channel_name, extract_semester_index
+from src.discord_api import get_guild_channels, create_channel, send_message, rename_channel, resolve_category
 from src.db_queries import (
     get_or_create_course, get_known_modules_for_course,
     upsert_module, has_modules, get_known_discussion_ids,
-    insert_discussion, update_course_crawl_time
+    insert_discussion, update_course_crawl_time,
+    get_course_discord_category, set_course_discord_category
 )
 
 # ==================== HẰNG SỐ ====================
@@ -119,6 +120,7 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
             'fullname': course_fullname,
             'subject': subject_code,
             'display_name': display_name,
+            'semester_index': extract_semester_index(course_shortname),
         }
 
         # Lấy known modules cho course này từ DB
@@ -203,26 +205,27 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
     # === Bước 6: Gửi thông báo Discord ===
     channels = get_guild_channels(bot_token, guild_id)
     channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0}
+    category_map = {c['name']: c['id'] for c in channels if c.get('type') == 4}
 
     for course_info, module in new_modules:
         _send_module_notification(
-            bot_token, guild_id, channel_map, course_info, module, is_update=False
+            bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update=False
         )
 
     for course_info, module in updated_modules:
         _send_module_notification(
-            bot_token, guild_id, channel_map, course_info, module, is_update=True
+            bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update=True
         )
 
     for course_info, disc in new_discussions:
         _send_discussion_notification(
-            bot_token, guild_id, channel_map, course_info, disc
+            bot_token, guild_id, channel_map, category_map, conn, course_info, disc
         )
 
 
 # ==================== GỬI THÔNG BÁO ====================
 
-def _ensure_channel(bot_token, guild_id, channel_map, subject_code, display_name=None):
+def _ensure_channel(bot_token, guild_id, channel_map, category_map, conn, subject_code, display_name=None, semester_index=None):
     """Tìm hoặc tạo kênh Discord cho một môn học. Trả về channel_id hoặc None."""
     chan_name = slugify_channel_name(subject_code, display_name)
 
@@ -242,10 +245,17 @@ def _ensure_channel(bot_token, guild_id, channel_map, subject_code, display_name
             del channel_map[old_chan_name]
         return old_id
 
-    # Tạo kênh mới với tên format mới
-    new_channel = create_channel(bot_token, guild_id, chan_name)
+    # Resolve category trước khi tạo kênh mới
+    if semester_index is not None:
+        category_id = resolve_category(bot_token, guild_id, category_map, f"kì {semester_index}")
+    else:
+        category_id = get_course_discord_category(conn, subject_code)
+
+    new_channel = create_channel(bot_token, guild_id, chan_name, parent_id=category_id)
     if new_channel:
         channel_map[chan_name] = new_channel['id']
+        if category_id:
+            set_course_discord_category(conn, subject_code, category_id)
         return new_channel['id']
 
     return None
@@ -257,9 +267,12 @@ def _get_module_display(modname):
     return emoji, label
 
 
-def _send_module_notification(bot_token, guild_id, channel_map, course_info, module, is_update):
+def _send_module_notification(bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update):
     """Gửi thông báo về module mới hoặc đã cập nhật."""
-    channel_id = _ensure_channel(bot_token, guild_id, channel_map, course_info['subject'], course_info.get('display_name'))
+    channel_id = _ensure_channel(
+        bot_token, guild_id, channel_map, category_map, conn,
+        course_info['subject'], course_info.get('display_name'), course_info.get('semester_index')
+    )
     if not channel_id:
         return
 
@@ -296,9 +309,12 @@ def _send_module_notification(bot_token, guild_id, channel_map, course_info, mod
     logging.info(f"Đã gửi thông báo module: {module.get('name', '')} ({course_info['subject']})")
 
 
-def _send_discussion_notification(bot_token, guild_id, channel_map, course_info, disc):
+def _send_discussion_notification(bot_token, guild_id, channel_map, category_map, conn, course_info, disc):
     """Gửi thông báo về bài đăng mới trên diễn đàn."""
-    channel_id = _ensure_channel(bot_token, guild_id, channel_map, course_info['subject'], course_info.get('display_name'))
+    channel_id = _ensure_channel(
+        bot_token, guild_id, channel_map, category_map, conn,
+        course_info['subject'], course_info.get('display_name'), course_info.get('semester_index')
+    )
     if not channel_id:
         return
 

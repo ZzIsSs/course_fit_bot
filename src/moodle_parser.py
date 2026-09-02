@@ -107,6 +107,29 @@ def extract_subject(category):
     clean_cat = re.sub(r'\s*-\s*(CQ|CLC|VP|CTTT)\d{4}.*$', '', category)
     return clean_cat.strip()
 
+
+def extract_semester_index(raw_code):
+    """Tính 'kì thứ mấy' (học kỳ riêng của sinh viên, kì 1 = học kỳ đầu tiên nhập học)
+    từ chuỗi mã gốc dạng 'CQ2627HK1_CSC10012_CQ2026/1'.
+
+    Chỉ áp dụng cho HK1/HK2 (học kỳ chính). HK3 (hè) hoặc chuỗi không khớp
+    pattern → trả None (bot sẽ fallback sang category đã gán tay, nếu có).
+    """
+    if not raw_code:
+        return None
+    match = re.search(r'CQ(\d{2})(\d{2})HK([123])_.*?_CQ(\d{4})/\d+', raw_code)
+    if not match:
+        return None
+    start_yy, _end_yy, hk_str, cohort_year_str = match.groups()
+    hk = int(hk_str)
+    if hk not in (1, 2):
+        return None
+    academic_start_year = 2000 + int(start_yy)
+    cohort_year = int(cohort_year_str)
+    ky = (academic_start_year - cohort_year) * 2 + hk
+    return ky if ky >= 1 else None
+
+
 # ==================== PARSE ICS ====================
 
 def fetch_and_parse_events(calendar_url):
@@ -150,7 +173,8 @@ def fetch_and_parse_events(calendar_url):
                     "uid": uid,
                     "summary": summary,
                     "deadline": dtend,
-                    "subject": subject
+                    "subject": subject,
+                    "category_raw": category,
                 })
             except Exception as e:
                 logging.error(f"Error parsing date {dtend_str}: {e}")

@@ -86,6 +86,22 @@ def get_course_display_name(conn, course_name):
     return row['display_name'] if row else None
 
 
+def get_course_discord_category(conn, course_name):
+    """Lấy Category ID đã gán cho môn học — dùng khi tạo channel mới.
+    Trả về None nếu chưa gán (bot sẽ tạo ở gốc như hành vi cũ)."""
+    row = fetch_one(conn,
+        "SELECT discord_category_id FROM courses WHERE course_name = %s",
+        (course_name,))
+    return row['discord_category_id'] if row else None
+
+
+def set_course_discord_category(conn, course_name, category_id):
+    """Gán/ghi nhận Category ID cho môn học."""
+    execute(conn,
+        "UPDATE courses SET discord_category_id = %s WHERE course_name = %s",
+        (category_id, course_name))
+
+
 # ==================== DEADLINES ====================
 
 def get_deadline_by_lms_id(conn, lms_deadlines_id):
@@ -160,6 +176,48 @@ def mark_deadline_completed(conn, deadlines_id, completed_by):
     execute(conn,
         "UPDATE deadlines SET completed = true, completed_by = %s WHERE deadlines_id = %s",
         (completed_by, deadlines_id))
+
+
+def get_pending_manual_deadlines(conn):
+    """Deadline thêm qua /add_deadline, chưa từng được cron xử lý lần đầu."""
+    return fetch_all(conn,
+        """SELECT d.*, c.course_name
+           FROM deadlines d
+           JOIN courses c ON d.courses_id = c.courses_id
+           WHERE d.source = 'manual' AND d.notified_new = false""")
+
+
+def insert_deadline_manual(conn, courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by):
+    """ON CONFLICT DO NOTHING: an toàn nếu Discord gửi lặp interaction (retry)."""
+    row = fetch_one(conn,
+        """INSERT INTO deadlines (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source, added_by)
+           VALUES (%s, %s, %s, %s, %s, 'manual', %s)
+           ON CONFLICT (lms_deadlines_id) DO NOTHING
+           RETURNING deadlines_id""",
+        (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by))
+    return row['deadlines_id'] if row else None
+
+
+def get_course_name_by_chat_id(conn, chat_id):
+    """Tự nhận diện môn học dựa vào kênh đang gõ lệnh — khỏi cần gõ mã môn."""
+    row = fetch_one(conn, "SELECT course_name FROM courses WHERE chat_id = %s", (str(chat_id),))
+    return row['course_name'] if row else None
+
+
+def get_deadlines_for_course_or_all(conn, course_name=None):
+    """Lấy deadline kèm course_name, lọc theo môn nếu có.
+    Việc lọc theo thời gian/đã hoàn thành thực hiện ở Python
+    để nhất quán với phần còn lại của code, tránh lệch timezone.
+    """
+    if course_name:
+        return fetch_all(conn,
+            """SELECT d.*, c.course_name
+               FROM deadlines d
+               JOIN courses c ON d.courses_id = c.courses_id
+               WHERE c.course_name = %s
+               ORDER BY d.due_time""",
+            (course_name,))
+    return get_all_deadlines_with_course(conn)
 
 
 # ==================== COURSE MODULES ====================

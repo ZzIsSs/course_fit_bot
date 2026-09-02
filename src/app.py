@@ -8,15 +8,18 @@ from src.db_queries import (
     get_or_create_course, get_deadline_by_lms_id, insert_deadline,
     update_deadline_notified, update_deadline_discord_info,
     get_all_deadlines_with_course, insert_notification,
-    update_course_chat_id, get_all_courses, get_course_display_name
+    update_course_chat_id, get_all_courses, get_course_display_name,
+    get_course_discord_category, set_course_discord_category,
+    get_pending_manual_deadlines
 )
 from src.discord_api import (
     get_bot_user, get_guild_channels, create_channel, rename_channel,
-    send_message, add_reaction, create_scheduled_event
+    send_message, add_reaction, create_scheduled_event,
+    resolve_category
 )
 from src.moodle_parser import (
     fetch_and_parse_events, slugify_channel_name,
-    extract_display_name, extract_subject
+    extract_display_name, extract_subject, extract_semester_index
 )
 from src.moodle_api import get_site_info, get_enrolled_courses
 from src.event_tracker import check_completions
@@ -37,11 +40,7 @@ def _build_event_url(uid):
     return base_url
 
 
-def _ensure_tz(dt):
-    """Đảm bảo datetime có timezone (mặc định UTC)."""
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
+from src.utils import ensure_tz as _ensure_tz
 
 
 # ==================== HÀM CHÍNH ====================
@@ -63,11 +62,13 @@ def run_main_bot():
 
     events = fetch_and_parse_events(calendar_url)
     if events is None:
-        return
+        logging.warning("Không tải được ICS, vẫn tiếp tục xử lý deadline thủ công (nếu có).")
+        events = []
 
     # Cache channels
     channels = get_guild_channels(bot_token, guild_id)
     channel_map = {c['name']: c['id'] for c in channels if c.get('type') == 0}
+    category_map = {c['name']: c['id'] for c in channels if c.get('type') == 4}
 
     with get_db(database_url) as conn:
         # Check completions from previous runs (check ✅ reactions)
@@ -76,8 +77,17 @@ def run_main_bot():
 
         now = datetime.now(timezone.utc)
 
-        # Process events
-        for event in events:
+        # Gộp deadline thêm qua /add_deadline vào cùng pipeline xử lý
+        manual_rows = get_pending_manual_deadlines(conn)
+        manual_events = [{
+            "uid": row['lms_deadlines_id'],
+            "summary": row['deadline_name'],
+            "deadline": _ensure_tz(row['due_time']),
+            "subject": row['course_name'],
+        } for row in manual_rows]
+
+        # Process events (Moodle + manual)
+        for event in events + manual_events:
             eid = event['uid']
 
             # Tìm deadline trong DB
@@ -117,14 +127,28 @@ def run_main_bot():
                     # Fallback: kênh cũ (chỉ mã môn) vẫn tồn tại
                     target_chan_id = channel_map[old_chan_name]
                 else:
-                    new_channel = create_channel(bot_token, guild_id, chan_name)
+                    ky = extract_semester_index(event.get('category_raw', ''))
+                    if ky is not None:
+                        category_id = resolve_category(bot_token, guild_id, category_map, f"kì {ky}")
+                    else:
+                        # Không nhận diện được tự động → dùng category đã gán tay
+                        # qua scripts/set_category.py (nếu có)
+                        category_id = get_course_discord_category(conn, event['subject'])
+
+                    new_channel = create_channel(bot_token, guild_id, chan_name, parent_id=category_id)
                     if new_channel:
                         channel_map[chan_name] = new_channel['id']
                         target_chan_id = new_channel['id']
+                        if category_id:
+                            set_course_discord_category(conn, event['subject'], category_id)
                     else:
                         continue
 
-                event_url = _build_event_url(eid)
+                # Deadline thủ công dùng source_url đã lưu, Moodle dùng link build từ uid
+                if eid.startswith('manual-'):
+                    event_url = deadline.get('source_url', '')
+                else:
+                    event_url = _build_event_url(eid)
                 deadline_local = event['deadline'].astimezone(LOCAL_TZ).strftime('%d/%m/%Y %H:%M')
                 completion_hint = "\n\n✅ *React ✅ vào tin nhắn này khi đã hoàn thành!*"
 
@@ -453,6 +477,7 @@ def sync_channels():
     discord_channels = get_guild_channels(bot_token, guild_id)
     # Map: channel_name → channel_id (chỉ text channels)
     channel_map = {c['name']: c['id'] for c in discord_channels if c.get('type') == 0}
+    category_map = {c['name']: c['id'] for c in discord_channels if c.get('type') == 4}
     # Map: channel_id → channel_name (để tra ngược)
     channel_id_to_name = {c['id']: c['name'] for c in discord_channels if c.get('type') == 0}
 
@@ -506,10 +531,18 @@ def sync_channels():
 
             else:
                 # Tạo kênh mới
-                new_channel = create_channel(bot_token, guild_id, new_chan_name)
+                ky = extract_semester_index(shortname)
+                if ky is not None:
+                    category_id = resolve_category(bot_token, guild_id, category_map, f"kì {ky}")
+                else:
+                    category_id = get_course_discord_category(conn, subject_code)
+
+                new_channel = create_channel(bot_token, guild_id, new_chan_name, parent_id=category_id)
                 if new_channel:
                     channel_map[new_chan_name] = new_channel['id']
                     update_course_chat_id(conn, db_course_id, new_channel['id'])
+                    if category_id:
+                        set_course_discord_category(conn, subject_code, category_id)
                     stats['created'] += 1
                 else:
                     stats['skipped'] += 1
