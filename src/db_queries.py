@@ -179,22 +179,23 @@ def mark_deadline_completed(conn, deadlines_id, completed_by):
 
 
 def get_pending_manual_deadlines(conn):
-    """Deadline thêm qua /add_deadline, chưa từng được cron xử lý lần đầu."""
+    """Deadline thêm thủ công (Discord /add_deadline hoặc API bên thứ 3),
+    chưa từng được cron xử lý lần đầu."""
     return fetch_all(conn,
         """SELECT d.*, c.course_name
            FROM deadlines d
            JOIN courses c ON d.courses_id = c.courses_id
-           WHERE d.source = 'manual' AND d.notified_new = false""")
+           WHERE d.source != 'moodle' AND d.notified_new = false""")
 
 
-def insert_deadline_manual(conn, courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by):
-    """ON CONFLICT DO NOTHING: an toàn nếu Discord gửi lặp interaction (retry)."""
+def insert_deadline_manual(conn, courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by, source='manual'):
+    """ON CONFLICT DO NOTHING: an toàn nếu request bị gửi lặp (retry)."""
     row = fetch_one(conn,
         """INSERT INTO deadlines (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source, added_by)
-           VALUES (%s, %s, %s, %s, %s, 'manual', %s)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)
            ON CONFLICT (lms_deadlines_id) DO NOTHING
            RETURNING deadlines_id""",
-        (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by))
+        (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source, added_by))
     return row['deadlines_id'] if row else None
 
 

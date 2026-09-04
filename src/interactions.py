@@ -14,7 +14,7 @@ from src.db_queries import (
     get_or_create_course, insert_deadline_manual, get_course_name_by_chat_id,
     get_deadlines_for_course_or_all
 )
-from src.utils import ensure_tz
+from src.utils import ensure_tz, parse_due_time
 from src.config import LOCAL_TZ
 
 DISCORD_PUBLIC_KEY = os.environ.get('DISCORD_PUBLIC_KEY')
@@ -49,23 +49,15 @@ def _get_option(options, name):
     return None
 
 
-def _parse_due_time(text):
-    """'25/12/2026 23:59' hoặc '25/12 23:59' (giờ VN) → datetime UTC."""
-    text = text.strip()
-    now_local = datetime.now(LOCAL_TZ)
-    for fmt, has_year in (("%d/%m/%Y %H:%M", True), ("%d/%m %H:%M", False)):
-        try:
-            dt = datetime.strptime(text, fmt)
-            if not has_year:
-                dt = dt.replace(year=now_local.year)
-            return dt.replace(tzinfo=LOCAL_TZ).astimezone(timezone.utc)
-        except ValueError:
-            continue
-    return None
-
-
 def _ephemeral(text):
+    """Chỉ người gõ lệnh thấy được (dùng cho lỗi và tra cứu riêng tư)."""
     return {"type": 4, "data": {"content": text, "flags": 64}}
+
+
+def _public(text):
+    """Cả kênh đều thấy được (dùng khi hành động ảnh hưởng đến mọi người,
+    ví dụ như xác nhận đã thêm deadline mới)."""
+    return {"type": 4, "data": {"content": text}}
 
 
 # ==================== HANDLER: /add_deadline ====================
@@ -76,11 +68,14 @@ def _handle_add_deadline(interaction, database_url):
     username = (interaction.get('member') or {}).get('user', {}).get('username', 'Unknown')
 
     name = _get_option(options, 'ten')
-    due_time = _parse_due_time(_get_option(options, 'han_chot') or '')
+    due_time = parse_due_time(_get_option(options, 'han_chot') or '', LOCAL_TZ)
     course_input = _get_option(options, 'mon')
 
     if not name or due_time is None:
-        return _ephemeral("❌ Hạn chót sai định dạng. Ví dụ: `25/12/2026 23:59`.")
+        return _ephemeral(
+            "❌ Hạn chót sai định dạng. Ví dụ: `25/12/2026 23:59` "
+            "hoặc chỉ `25/12/2026` (bot tự set 23:59)."
+        )
 
     with get_db(database_url) as conn:
         course_name = course_input.strip().upper() if course_input else get_course_name_by_chat_id(conn, channel_id)
@@ -88,15 +83,28 @@ def _handle_add_deadline(interaction, database_url):
             return _ephemeral("❌ Không xác định được môn. Dùng lệnh trong kênh của môn, hoặc điền option `mon`.")
 
         courses_id = get_or_create_course(conn, course_name)
-        insert_deadline_manual(
+        deadlines_id = insert_deadline_manual(
             conn, courses_id, name, f"manual-{interaction['id']}", due_time,
             source_url=f"Discord (thêm bởi {username})", added_by=username
         )
 
     due_local = due_time.astimezone(LOCAL_TZ).strftime('%d/%m/%Y %H:%M')
-    return _ephemeral(
-        f"✅ Đã lưu deadline nội bộ!\n📚 Môn: **{course_name}**\n📝 {name}\n⏰ {due_local}\n\n"
-        f"Bot sẽ thông báo vào kênh môn trong tối đa 30 phút và nhắc nhở như deadline thường."
+
+    # deadlines_id là None khi ON CONFLICT DO NOTHING kích hoạt — tức Discord
+    # đã gửi lặp lại đúng interaction này (retry). Không phải deadline mới,
+    # chỉ là hiển thị lại xác nhận cho interaction bị gửi 2 lần, tránh làm
+    # người trong kênh hiểu lầm có 2 deadline được thêm.
+    header = "📌 **Deadline nội bộ mới**"
+    if deadlines_id is None:
+        header += " _(xác nhận lặp lại — deadline này đã được lưu từ trước, không tạo trùng)_"
+
+    return _public(
+        f"{header}\n"
+        f"📚 Môn: **{course_name}**\n"
+        f"📝 {name}\n"
+        f"⏰ Hạn chót: {due_local}\n"
+        f"➕ Thêm bởi: {username}\n\n"
+        f"_Bot sẽ gửi thông báo chính thức kèm nhắc nhở vào kênh môn trong tối đa 30 phút._"
     )
 
 

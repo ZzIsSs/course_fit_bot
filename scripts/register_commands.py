@@ -11,10 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import load_env
 
-APPLICATION_ID = os.environ.get('DISCORD_APPLICATION_ID')
-
 env = load_env()
 BOT_TOKEN = env['bot_token'] if env else os.environ.get('DISCORD_BOT_TOKEN')
+APPLICATION_ID = os.environ.get('DISCORD_APPLICATION_ID')
 
 COMMANDS = [
     {
@@ -22,7 +21,7 @@ COMMANDS = [
         "description": "Thêm deadline nội bộ (không có trên Moodle)",
         "options": [
             {"name": "ten", "description": "Tên công việc", "type": 3, "required": True},
-            {"name": "han_chot", "description": "dd/mm/yyyy HH:MM", "type": 3, "required": True},
+            {"name": "han_chot", "description": "dd/mm/yyyy HH:MM (bỏ giờ = mặc định 23:59)", "type": 3, "required": True},
             {"name": "mon", "description": "Mã môn (bỏ trống nếu đang chat trong kênh môn đó)", "type": 3, "required": False},
         ]
     },
@@ -48,8 +47,8 @@ resp = requests.put(
 )
 
 if resp.status_code == 200:
-    print(f"✅ Đã đăng ký {len(COMMANDS)} lệnh thành công!")
+    print(f"[OK] Da dang ky {len(COMMANDS)} lenh thanh cong!")
     for cmd in resp.json():
         print(f"   /{cmd['name']} (ID: {cmd['id']})")
 else:
-    print(f"❌ Lỗi {resp.status_code}: {resp.text}")
+    print(f"[ERROR] Loi {resp.status_code}: {resp.text}")
