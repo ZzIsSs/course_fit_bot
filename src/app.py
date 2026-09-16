@@ -24,6 +24,7 @@ from src.moodle_parser import (
 from src.moodle_api import get_site_info, get_enrolled_courses
 from src.event_tracker import check_completions
 from src.announcement_tracker import check_moodle_updates
+from src.notion_sync import NotionSync
 
 
 # ==================== TIỆN ÍCH ====================
@@ -60,6 +61,13 @@ def run_main_bot():
     bot_user = get_bot_user(bot_token)
     bot_user_id = bot_user['id'] if bot_user else None
 
+    # Khởi tạo Notion sync (tùy chọn — bỏ qua nếu chưa cấu hình)
+    notion = None
+    notion_token = env.get('notion_token')
+    notion_db_id = env.get('notion_db_id')
+    if notion_token and notion_db_id:
+        notion = NotionSync(notion_token, notion_db_id)
+
     events = fetch_and_parse_events(calendar_url)
     if events is None:
         logging.warning("Không tải được ICS, vẫn tiếp tục xử lý deadline thủ công (nếu có).")
@@ -73,7 +81,7 @@ def run_main_bot():
     with get_db(database_url) as conn:
         # Check completions from previous runs (check ✅ reactions)
         if bot_user_id:
-            check_completions(bot_token, guild_id, bot_user_id, conn)
+            check_completions(bot_token, guild_id, bot_user_id, conn, notion=notion)
 
         now = datetime.now(timezone.utc)
 
@@ -185,11 +193,33 @@ def run_main_bot():
                     # Ghi log notification
                     insert_notification(conn, 'deadline', content[:500], deadline['deadlines_id'])
 
+                    # Commit ngay vào DB để chốt trạng thái đã gửi Discord (chống gửi lặp nếu các bước sau lỗi)
+                    conn.commit()
+
+                    # ===== Đồng bộ lên Notion Todo List (chỉ deadline MỚI) =====
+                    if notion and msg_type == "NEW":
+                        try:
+                            source = "Discord" if eid.startswith('manual-') else "Moodle"
+                            notion.add_deadline(
+                                task_name=event['summary'],
+                                course_name=event['subject'],
+                                deadline_dt=event['deadline'],
+                                url=event_url,
+                                lms_id=eid,
+                                source=source,
+                            )
+                        except Exception as e:
+                            logging.warning(f"Notion sync error (bỏ qua để không ảnh hưởng bot): {e}")
+
         # ===== Kiểm tra thông báo Moodle (nếu có token) =====
         moodle_token = env.get('moodle_token')
         if moodle_token:
             logging.info("Bắt đầu kiểm tra thông báo Moodle...")
-            check_moodle_updates(bot_token, guild_id, moodle_token, conn)
+            try:
+                check_moodle_updates(bot_token, guild_id, moodle_token, conn)
+                conn.commit()
+            except Exception as e:
+                logging.error(f"Lỗi khi quét thông báo Moodle: {e}")
         else:
             logging.info("Bỏ qua kiểm tra Moodle (chưa có MOODLE_TOKEN).")
 
@@ -551,4 +581,38 @@ def sync_channels():
         f"Đồng bộ kênh hoàn tất: "
         f"{stats['created']} tạo mới, {stats['renamed']} rename, "
         f"{stats['existed']} đã tồn tại, {stats['skipped']} bỏ qua."
+    )
+
+
+# ==================== ĐỒNG BỘ NOTION ====================
+
+def sync_notion():
+    """Đồng bộ toàn bộ deadline hiện có từ DB lên Notion Todo List.
+
+    Dùng cho lần chạy đầu tiên sau khi cấu hình Notion,
+    hoặc khi muốn đảm bảo dữ liệu Notion đồng bộ với DB.
+    Chạy bằng: python main.py --sync-notion
+    """
+    env = load_env()
+    if not env:
+        return
+
+    notion_token = env.get('notion_token')
+    notion_db_id = env.get('notion_db_id')
+    if not notion_token or not notion_db_id:
+        logging.error("NOTION_API_TOKEN hoặc NOTION_DATABASE_ID chưa được thiết lập.")
+        return
+
+    database_url = env['database_url']
+    notion = NotionSync(notion_token, notion_db_id)
+
+    with get_db(database_url) as conn:
+        all_deadlines = get_all_deadlines_with_course(conn)
+        logging.info(f"Bắt đầu đồng bộ {len(all_deadlines)} deadline lên Notion...")
+        stats = notion.sync_all_deadlines(all_deadlines)
+
+    logging.info(
+        f"Đồng bộ Notion hoàn tất: "
+        f"{stats['added']} thêm mới, {stats['skipped']} đã có, "
+        f"{stats['failed']} lỗi."
     )

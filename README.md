@@ -1,14 +1,18 @@
 # Course FIT HCMUS - Discord Notification Bot
 
-Dự án này là một Bot Discord tự động đồng bộ các sự kiện, deadline bài tập và thông báo từ hệ thống Moodle (courses.fit.hcmus.edu.vn) sang Server Discord của bạn.
+Dự án này là một Bot Discord tự động đồng bộ các sự kiện, deadline bài tập, tài liệu môn học và thông báo từ hệ thống Moodle (courses.fit.hcmus.edu.vn) sang Server Discord của bạn. 
+
+Điểm đặc biệt của bot là kiến trúc **100% Serverless**, sử dụng trực tiếp Discord REST API thay vì các thư viện nặng (như `discord.py`), giúp bot có thể chạy ngầm hoàn toàn miễn phí qua GitHub Actions mà không cần thuê server 24/7.
 
 ## Tính năng nổi bật
-- **Đồng bộ Lịch & Deadline:** Tự động lấy các sự kiện, bài tập sắp tới từ file iCalendar (.ics) của Moodle.
-- **Tạo Sự kiện (Scheduled Events):** Bot giao tiếp trực tiếp với API Discord để tự động tạo các Sự Kiện trên Server. Sinh viên có thể bấm "Tham gia" để nhận nhắc nhở.
-- **Đồng bộ Thông báo môn học:** Gọi Moodle API để lấy các thông báo mới nhất từ diễn đàn môn học của giảng viên (yêu cầu thiết lập `MOODLE_TOKEN`).
-- **Báo cáo Tóm tắt (Summary & Progress):** Cung cấp các lệnh báo cáo tổng hợp tiến độ và các deadline trong ngày/tuần để tránh trôi tin nhắn.
-- **Lưu trữ trạng thái bằng PostgreSQL:** Sử dụng Supabase PostgreSQL làm cơ sở dữ liệu để lưu trạng thái thông báo, theo dõi deadline và ghi log lỗi. Có sẵn cơ chế chống spam và chống gửi thông báo lặp lại.
-- **Tối ưu hóa Serverless:** Thiết kế gọn nhẹ (không phụ thuộc vào các thư viện bot nặng nề) để chạy tự động 24/7 miễn phí trên GitHub Actions.
+- **Quản lý Kênh & Học kỳ tự động:** Tự động lấy danh sách môn học từ Moodle, bóc tách tên tiếng Việt và mã môn để tạo các kênh Discord theo format chuẩn (vd: `#nmttnt-csc10014`). Tự động tính toán để phân loại môn học vào đúng Category của từng Học kỳ.
+- **Theo dõi toàn diện Moodle:** Không chỉ lấy thông báo diễn đàn, bot quét toàn bộ khóa học để phát hiện ngay lập tức khi giảng viên upload tài liệu (PDF, Slide), Folder, URL, hoặc bài Quiz mới.
+- **Tương tác "Hoàn thành" qua Emoji:** Sinh viên chỉ cần thả cảm xúc (react) dấu `✅` vào tin nhắn nhắc deadline. Bot sẽ tự động ghi nhận deadline đã hoàn thành và điểm danh người thực hiện trên bảng báo cáo tiến độ.
+- **Đồng bộ Lịch & Deadline:** Tự động lấy các sự kiện, bài tập sắp tới từ file iCalendar (.ics) của Moodle. Có chuỗi nhắc nhở thông minh: Mới tạo, Nhắc nhở (Còn 3 ngày), và Khẩn cấp (<24 giờ).
+- **Tạo Sự kiện (Scheduled Events):** Giao tiếp trực tiếp với Discord API để tự động tạo Scheduled Events.
+- **Báo cáo Tiến độ (Summary & Progress):** Tự động gửi báo cáo tổng hợp tiến độ (kèm thanh Progress Bar) và các deadline vào 7:00 sáng mỗi ngày.
+- **Hỗ trợ Deadline thủ công (Backend):** Backend đã tích hợp sẵn cơ chế gộp các deadline nội bộ tự tạo vào chung luồng xử lý và nhắc nhở với Moodle.
+- **Cơ chế lưu trạng thái chống Spam:** Sử dụng Supabase PostgreSQL làm cơ sở dữ liệu để lưu thời gian update (`timemodified`), tracking thông báo và chặn tuyệt đối việc gửi tin lặp lại.
 
 ## Hướng dẫn cài đặt và chạy tự động (GitHub Actions)
 
@@ -21,11 +25,11 @@ Dự án này là một Bot Discord tự động đồng bộ các sự kiện, 
 1. **`DISCORD_BOT_TOKEN`**: Tạo một ứng dụng Bot trên [Discord Developer Portal](https://discord.com/developers/applications), lấy Token. Đảm bảo bot đã được mời vào Server Discord với đủ quyền (Tạo Channel, Quản lý Event, Gửi tin nhắn).
 2. **`DISCORD_SERVER_ID`**: ID của Server Discord (bật Developer Mode, chuột phải vào tên Server → Copy Server ID).
 3. **`MOODLE_CALENDAR_URL`**: Đăng nhập Moodle → Lịch (Calendar) → Xuất lịch (Export Calendar) → Sao chép URL lịch (.ics).
-4. **`MOODLE_TOKEN`** *(Tuỳ chọn)*: Token Moodle để đọc thông báo diễn đàn môn học.
+4. **`MOODLE_TOKEN`** *(Tuỳ chọn nhưng khuyên dùng)*: Token Moodle để quét tài liệu khóa học và thông báo diễn đàn.
 5. **`DATABASE_URL`**: Connection string từ Supabase ở Bước 1.
 
 ### Bước 3: Tạo Repository trên GitHub
-1. Tạo Repository mới trên GitHub. **Phải đặt chế độ Private** để bảo mật.
+1. Tạo Repository mới trên GitHub. **Phải đặt chế độ Private** để bảo mật các URL và Token.
 2. Tải toàn bộ mã nguồn lên Repository. Đảm bảo thư mục ẩn `.github/workflows` đã được đưa lên đầy đủ.
 
 ### Bước 4: Cấu hình GitHub Secrets
@@ -40,8 +44,8 @@ Dự án này là một Bot Discord tự động đồng bộ các sự kiện, 
 ### Bước 5: Chạy thử (Manual Test)
 1. Chuyển sang tab **Actions** trên giao diện Repo GitHub.
 2. Bấm vào tên workflow **Notification Bot** ở menu bên trái.
-3. Bấm nút **Run workflow** để chạy thử lần đầu.
-4. Kiểm tra bên Server Discord xem Bot đã tạo Event hoặc gửi thông báo chưa. Từ nay, Bot sẽ tự động chạy ngầm mỗi 30 phút.
+3. Bấm nút **Run workflow** để chạy thử lần đầu (có thể chọn các chế độ chạy như `--sync-channels` để tạo kênh Discord tự động).
+4. Kiểm tra bên Server Discord xem Bot đã tạo Event, tạo kênh hoặc gửi thông báo chưa. Từ nay, Bot sẽ tự động chạy ngầm mỗi 30 phút.
 
 ---
 
@@ -56,10 +60,11 @@ Dự án này là một Bot Discord tự động đồng bộ các sự kiện, 
    ```bash
    psql $DATABASE_URL -f migrations/001_create_database.sql
    ```
-4. Chạy script:
+4. Chạy script thủ công:
    ```bash
-   python main.py                  # Cập nhật deadline + thông báo mới
-   python main.py --summary        # Gửi báo cáo tóm tắt
-   python main.py --progress       # Gửi báo cáo tiến độ
-   python main.py --announcements  # Kiểm tra thông báo Moodle
+   python main.py                  # Cập nhật deadline + thông báo Moodle mới
+   python main.py --summary        # Gửi báo cáo tóm tắt deadline hằng ngày
+   python main.py --progress       # Gửi báo cáo tiến độ chi tiết
+   python main.py --announcements  # Chỉ kiểm tra tài liệu và diễn đàn Moodle
+   python main.py --sync-channels  # Tự động tạo và làm chuẩn tên kênh Discord từ Moodle
    ```

@@ -27,6 +27,8 @@ def load_env():
     guild_id = os.environ.get('DISCORD_SERVER_ID')
     database_url = os.environ.get('DATABASE_URL')
     moodle_token = os.environ.get('MOODLE_TOKEN')
+    notion_token = os.environ.get('NOTION_API_TOKEN')
+    notion_db_id = os.environ.get('NOTION_DATABASE_ID')
 
     if not all([calendar_url, bot_token, guild_id, database_url]):
         logging.error(
@@ -40,10 +42,17 @@ def load_env():
     else:
         logging.info("MOODLE_TOKEN not set — Moodle announcement tracking disabled.")
 
+    if notion_token and notion_db_id:
+        logging.info("NOTION detected — Notion Todo List sync enabled.")
+    else:
+        logging.info("NOTION not configured — Notion sync disabled.")
+
     return {
         'calendar_url': calendar_url,
         'bot_token': bot_token,
         'guild_id': guild_id,
         'database_url': database_url,
         'moodle_token': moodle_token,
+        'notion_token': notion_token,
+        'notion_db_id': notion_db_id,
     }
