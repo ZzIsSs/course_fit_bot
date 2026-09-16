@@ -184,6 +184,9 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
                                     'forum_name': forum.get('name', 'Forum'),
                                 }))
 
+    # Commit trạng thái đã quét vào DB ngay
+    conn.commit()
+
     # === Bước 5: Xử lý kết quả ===
     if is_first_run:
         logging.info(
@@ -211,16 +214,19 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
         _send_module_notification(
             bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update=False
         )
+        conn.commit()
 
     for course_info, module in updated_modules:
         _send_module_notification(
             bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update=True
         )
+        conn.commit()
 
     for course_info, disc in new_discussions:
         _send_discussion_notification(
             bot_token, guild_id, channel_map, category_map, conn, course_info, disc
         )
+        conn.commit()
 
 
 # ==================== GỬI THÔNG BÁO ====================
