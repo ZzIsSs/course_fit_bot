@@ -1,0 +1,22 @@
+# Exclude bot CLI runner & background logic from Vercel Serverless Functions
+main.py
+src/app.py
+src/google_calendar_sync.py
+src/announcement_tracker.py
+src/notion_sync.py
+src/moodle_api.py
+src/moodle_parser.py
+src/event_tracker.py
+
+# Exclude docs, tests, scripts & CI
+tests/
+docs/
+scripts/
+migrations/
+.github/
+*.md
+
+# Exclude secrets & local env
+service_account*.json
+credentials*.json
+.env
