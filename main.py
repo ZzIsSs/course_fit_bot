@@ -1,5 +1,8 @@
 import sys
-from src.app import run_main_bot, send_daily_summary, send_progress_report, check_announcements, sync_channels, sync_notion
+from src.app import (
+    run_main_bot, send_daily_summary, send_progress_report,
+    check_announcements, sync_channels, sync_notion, sync_google_calendar
+)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -13,8 +16,11 @@ if __name__ == "__main__":
             sync_channels()
         elif sys.argv[1] == "--sync-notion":
             sync_notion()
+        elif sys.argv[1] in ("--sync-gcal", "--sync-google-calendar"):
+            sync_google_calendar()
         else:
             print(f"Unknown argument: {sys.argv[1]}")
-            print("Usage: python main.py [--summary | --progress | --announcements | --sync-channels | --sync-notion]")
+            print("Usage: python main.py [--summary | --progress | --announcements | --sync-channels | --sync-notion | --sync-gcal]")
     else:
         run_main_bot()
+

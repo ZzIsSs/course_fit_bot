@@ -25,6 +25,7 @@ from src.moodle_api import get_site_info, get_enrolled_courses
 from src.event_tracker import check_completions
 from src.announcement_tracker import check_moodle_updates
 from src.notion_sync import NotionSync
+from src.google_calendar_sync import GoogleCalendarSync
 
 
 # ==================== TIỆN ÍCH ====================
@@ -68,6 +69,14 @@ def run_main_bot():
     if notion_token and notion_db_id:
         notion = NotionSync(notion_token, notion_db_id)
 
+    # Khởi tạo Google Calendar sync (tùy chọn — bỏ qua nếu chưa cấu hình)
+    gcal = None
+    google_sa_json = env.get('google_sa_json')
+    google_sa_file = env.get('google_sa_file')
+    google_cal_id = env.get('google_cal_id')
+    if (google_sa_json or google_sa_file) and google_cal_id:
+        gcal = GoogleCalendarSync(sa_json=google_sa_json, sa_file=google_sa_file, calendar_id=google_cal_id)
+
     events = fetch_and_parse_events(calendar_url)
     if events is None:
         logging.warning("Không tải được ICS, vẫn tiếp tục xử lý deadline thủ công (nếu có).")
@@ -81,7 +90,7 @@ def run_main_bot():
     with get_db(database_url) as conn:
         # Check completions from previous runs (check ✅ reactions)
         if bot_user_id:
-            check_completions(bot_token, guild_id, bot_user_id, conn, notion=notion)
+            check_completions(bot_token, guild_id, bot_user_id, conn, notion=notion, gcal=gcal)
 
         now = datetime.now(timezone.utc)
 
@@ -210,6 +219,22 @@ def run_main_bot():
                             )
                         except Exception as e:
                             logging.warning(f"Notion sync error (bỏ qua để không ảnh hưởng bot): {e}")
+
+                    # ===== Đồng bộ lên Google Calendar (chỉ deadline MỚI) =====
+                    if gcal and msg_type == "NEW":
+                        try:
+                            source = "Discord" if eid.startswith('manual-') else "Moodle"
+                            gcal.add_deadline(
+                                task_name=event['summary'],
+                                course_name=event['subject'],
+                                deadline_dt=event['deadline'],
+                                url=event_url,
+                                lms_id=eid,
+                                source=source,
+                            )
+                        except Exception as e:
+                            logging.warning(f"Google Calendar sync error (bỏ qua để không ảnh hưởng bot): {e}")
+
 
         # ===== Kiểm tra thông báo Moodle (nếu có token) =====
         moodle_token = env.get('moodle_token')
@@ -616,3 +641,42 @@ def sync_notion():
         f"{stats['added']} thêm mới, {stats['skipped']} đã có, "
         f"{stats['failed']} lỗi."
     )
+
+
+# ==================== ĐỒNG BỘ GOOGLE CALENDAR ====================
+
+def sync_google_calendar():
+    """Đồng bộ toàn bộ deadline hiện có từ DB lên Google Calendar.
+
+    Dùng cho lần chạy đầu tiên sau khi cấu hình Google Calendar,
+    hoặc khi muốn đảm bảo dữ liệu Google Calendar đồng bộ với DB.
+    Chạy bằng: python main.py --sync-gcal
+    """
+    env = load_env()
+    if not env:
+        return
+
+    google_sa_json = env.get('google_sa_json')
+    google_sa_file = env.get('google_sa_file')
+    google_cal_id = env.get('google_cal_id')
+    if not (google_sa_json or google_sa_file) or not google_cal_id:
+        logging.error("GOOGLE_SERVICE_ACCOUNT_JSON/FILE hoặc GOOGLE_CALENDAR_ID chưa được thiết lập.")
+        return
+
+    database_url = env['database_url']
+    gcal = GoogleCalendarSync(sa_json=google_sa_json, sa_file=google_sa_file, calendar_id=google_cal_id)
+    if not gcal.is_available():
+        logging.error("Không thể khởi tạo Google Calendar Service. Vui lòng kiểm tra lại Credentials.")
+        return
+
+    with get_db(database_url) as conn:
+        all_deadlines = get_all_deadlines_with_course(conn)
+        logging.info(f"Bắt đầu đồng bộ {len(all_deadlines)} deadline lên Google Calendar...")
+        stats = gcal.sync_all_deadlines(all_deadlines)
+
+    logging.info(
+        f"Đồng bộ Google Calendar hoàn tất: "
+        f"{stats['added']} thêm mới, {stats['skipped']} đã có, "
+        f"{stats['failed']} lỗi."
+    )
+

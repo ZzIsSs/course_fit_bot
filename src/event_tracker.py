@@ -6,7 +6,7 @@ from src.db_queries import get_tracked_deadlines, mark_deadline_completed
 
 # ==================== KIỂM TRA HOÀN THÀNH ====================
 
-def check_completions(token, guild_id, bot_user_id, conn, notion=None):
+def check_completions(token, guild_id, bot_user_id, conn, notion=None, gcal=None):
     """Kiểm tra reactions ✅ trên tin nhắn deadline, đánh dấu hoàn thành nếu có người react.
 
     Args:
@@ -15,6 +15,7 @@ def check_completions(token, guild_id, bot_user_id, conn, notion=None):
         bot_user_id: ID của bot (để lọc bỏ reaction của chính bot).
         conn: Database connection.
         notion: NotionSync instance (tùy chọn — đồng bộ trạng thái lên Notion).
+        gcal: GoogleCalendarSync instance (tùy chọn — đồng bộ trạng thái lên Google Calendar).
     """
     deadlines = get_tracked_deadlines(conn)
 
@@ -35,3 +36,8 @@ def check_completions(token, guild_id, bot_user_id, conn, notion=None):
             # Đồng bộ trạng thái Done lên Notion
             if notion:
                 notion.mark_completed(dl['lms_deadlines_id'], completed_by)
+
+            # Đồng bộ trạng thái Done lên Google Calendar
+            if gcal:
+                gcal.mark_completed(dl['lms_deadlines_id'], completed_by=completed_by, task_name=dl.get('deadline_name'))
+

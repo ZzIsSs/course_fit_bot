@@ -29,6 +29,9 @@ def load_env():
     moodle_token = os.environ.get('MOODLE_TOKEN')
     notion_token = os.environ.get('NOTION_API_TOKEN')
     notion_db_id = os.environ.get('NOTION_DATABASE_ID')
+    google_sa_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    google_sa_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE')
+    google_cal_id = os.environ.get('GOOGLE_CALENDAR_ID')
 
     if not all([calendar_url, bot_token, guild_id, database_url]):
         logging.error(
@@ -47,6 +50,11 @@ def load_env():
     else:
         logging.info("NOTION not configured — Notion sync disabled.")
 
+    if (google_sa_json or google_sa_file) and google_cal_id:
+        logging.info("GOOGLE CALENDAR detected — Google Calendar sync enabled.")
+    else:
+        logging.info("GOOGLE CALENDAR not configured — Google Calendar sync disabled.")
+
     return {
         'calendar_url': calendar_url,
         'bot_token': bot_token,
@@ -55,4 +63,7 @@ def load_env():
         'moodle_token': moodle_token,
         'notion_token': notion_token,
         'notion_db_id': notion_db_id,
+        'google_sa_json': google_sa_json,
+        'google_sa_file': google_sa_file,
+        'google_cal_id': google_cal_id,
     }

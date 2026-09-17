@@ -2,3 +2,6 @@ requests
 psycopg2-binary
 pynacl
 python-dotenv
+google-auth>=2.0.0
+google-api-python-client>=2.0.0
+
