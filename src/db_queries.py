@@ -292,14 +292,82 @@ def insert_notification(conn, notif_type, message, reference_id):
         (notif_type, message, reference_id))
 
 
-# ==================== ERROR LOGS ====================
+# ==================== DASHBOARD & FRONTEND QUERIES ====================
 
-def insert_error_log(conn, source, error_message, severity='error', command=None,
-                     reference_type=None, reference_id=None, error_detail=None, context=None):
-    """Ghi log lỗi vào database."""
+def toggle_deadline_completed(conn, deadlines_id, completed, completed_by=None):
+    """Đánh dấu hoặc bỏ đánh dấu hoàn thành deadline."""
     execute(conn,
-        """INSERT INTO error_logs (source, severity, command, reference_type, reference_id,
-                                   error_message, error_detail, context)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-        (source, severity, command, reference_type, reference_id,
-         error_message, error_detail, json.dumps(context) if context else None))
+        """UPDATE deadlines
+           SET completed = %s, completed_by = %s
+           WHERE deadlines_id = %s""",
+        (completed, completed_by if completed else None, deadlines_id))
+
+
+def get_courses_with_deadline_counts(conn):
+    """Lấy danh sách khóa học kèm số lượng deadline chưa hoàn thành."""
+    return fetch_all(conn,
+        """SELECT c.courses_id, c.course_name, c.display_name, c.lms_courses_id, c.chat_id, c.discord_category_id,
+                  COUNT(d.deadlines_id) FILTER (WHERE d.completed = false AND d.due_time >= now() - interval '1 day') AS pending_deadlines_count
+           FROM courses c
+           LEFT JOIN deadlines d ON c.courses_id = d.courses_id
+           GROUP BY c.courses_id, c.course_name, c.display_name, c.lms_courses_id, c.chat_id, c.discord_category_id
+           ORDER BY c.course_name""")
+
+
+def get_dashboard_stats(conn):
+    """Tính toán thống kê tổng thể cho Dashboard."""
+    row = fetch_one(conn,
+        """SELECT
+            COUNT(*)::int AS total_deadlines,
+            COUNT(*) FILTER (WHERE completed = true)::int AS completed_deadlines,
+            COUNT(*) FILTER (WHERE completed = false)::int AS pending_deadlines,
+            COUNT(*) FILTER (WHERE completed = false AND due_time <= now() + interval '24 hours' AND due_time >= now() - interval '1 day')::int AS urgent_24h,
+            COUNT(*) FILTER (WHERE completed = false AND due_time <= now() + interval '3 days' AND due_time > now() + interval '24 hours')::int AS upcoming_3d,
+            COUNT(*) FILTER (WHERE completed = false AND due_time < now())::int AS overdue
+           FROM deadlines""")
+
+    course_row = fetch_one(conn, "SELECT COUNT(*)::int AS total_courses FROM courses")
+
+    total = row['total_deadlines'] if row else 0
+    completed = row['completed_deadlines'] if row else 0
+    rate = round((completed / total * 100), 1) if total > 0 else 0.0
+
+    return {
+        "total_deadlines": total,
+        "completed_deadlines": completed,
+        "pending_deadlines": row['pending_deadlines'] if row else 0,
+        "completion_rate": rate,
+        "urgent_24h": row['urgent_24h'] if row else 0,
+        "upcoming_3d": row['upcoming_3d'] if row else 0,
+        "overdue": row['overdue'] if row else 0,
+        "total_courses": course_row['total_courses'] if course_row else 0,
+    }
+
+
+def get_all_deadlines_with_course_details(conn, course_name=None):
+    """Lấy danh sách deadlines kèm tên hiển thị môn học."""
+    if course_name:
+        return fetch_all(conn,
+            """SELECT d.*, c.course_name, c.display_name AS course_display_name
+               FROM deadlines d
+               JOIN courses c ON d.courses_id = c.courses_id
+               WHERE c.course_name = %s
+               ORDER BY d.due_time ASC""",
+            (course_name,))
+    return fetch_all(conn,
+        """SELECT d.*, c.course_name, c.display_name AS course_display_name
+           FROM deadlines d
+           JOIN courses c ON d.courses_id = c.courses_id
+           ORDER BY d.due_time ASC""")
+
+
+def get_recent_announcements_with_course(conn, limit=20):
+    """Lấy danh sách thông báo môn học gần nhất."""
+    return fetch_all(conn,
+        """SELECT a.announcements_id, a.courses_id, a.announcements_name, a.created_time, a.source_url,
+                  c.course_name, c.display_name AS course_display_name
+           FROM announcements a
+           JOIN courses c ON a.courses_id = c.courses_id
+           ORDER BY a.created_time DESC
+           LIMIT %s""",
+        (limit,))

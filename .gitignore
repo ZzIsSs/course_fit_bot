@@ -8,9 +8,17 @@ __pycache__/
 *.json
 !data/*.json
 !vercel.json
+!frontend/*.json
+!pyproject.toml
 service_account*.json
 credentials*.json
 
+# Node & Frontend
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+.vercel/
 
 # Runtime data
 data/calendar.ics
