@@ -1,11 +1,13 @@
 import React from 'react';
 import { Award, Sparkles, ArrowRight } from 'lucide-react';
 import { ProgressBar } from '../../components/ui/ProgressBar';
+import { getCurrentSemester } from '../../utils/dateUtils';
 
 interface HeroBannerProps {
   completionRate: number;
   completedCount: number;
   totalCount: number;
+  semesterLabel?: string;
   onViewAllDeadlines: () => void;
 }
 
@@ -13,9 +15,11 @@ export const HeroProgressBanner: React.FC<HeroBannerProps> = ({
   completionRate = 0,
   completedCount = 0,
   totalCount = 0,
+  semesterLabel,
   onViewAllDeadlines,
 }) => {
   const safeRate = isNaN(completionRate) ? 0 : Math.max(0, Math.min(100, completionRate));
+  const currentSemesterLabel = semesterLabel || getCurrentSemester().label;
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-900 via-brand-700 to-blue-600 text-white p-6 sm:p-8 shadow-xl shadow-brand-900/10">
@@ -27,7 +31,7 @@ export const HeroProgressBanner: React.FC<HeroBannerProps> = ({
         <div className="max-w-xl">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold tracking-wide text-blue-100 mb-3 border border-white/15">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            Bảng điều khiển Học kỳ 1 (2024 - 2025)
+            Bảng điều khiển {currentSemesterLabel}
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">

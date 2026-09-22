@@ -79,6 +79,8 @@ class handler(BaseHTTPRequestHandler):
             try:
                 with get_db(DATABASE_URL) as conn:
                     stats = get_dashboard_stats(conn)
+                from src.moodle_parser import get_current_semester
+                stats["semester"] = get_current_semester()
                 self._send_json(200, {"ok": True, "data": stats})
             except Exception as e:
                 self._send_json(500, {"ok": False, "error": f"Lỗi truy vấn stats: {str(e)}"})

@@ -30,6 +30,12 @@ export interface Deadline {
   discord_message_id?: string | null;
 }
 
+export interface SemesterInfo {
+  semester: 1 | 2 | 3;
+  academicYear: string;
+  label: string;
+}
+
 export interface DashboardStats {
   total_deadlines: number;
   completed_deadlines: number;
@@ -39,6 +45,7 @@ export interface DashboardStats {
   upcoming_3d: number;
   overdue: number;
   total_courses: number;
+  semester?: SemesterInfo;
 }
 
 export interface Announcement {

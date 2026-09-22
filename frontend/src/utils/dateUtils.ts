@@ -86,3 +86,57 @@ export function getCountdown(dateInput?: string | number | Date | null): {
     diffHours,
   };
 }
+
+export interface SemesterInfo {
+  semester: 1 | 2 | 3;
+  academicYear: string;
+  label: string;
+}
+
+/**
+ * Tính toán Học kỳ & Năm học theo thời gian thực hoặc ngày truyền vào.
+ * Quy tắc:
+ * - Tháng 9 đến Tháng 1: Học kỳ 1 (Tháng 1 tính vào năm học bắt đầu từ năm trước)
+ * - Tháng 2 đến Tháng 6: Học kỳ 2
+ * - Tháng 7 đến Tháng 8: Học kỳ Hè
+ */
+export function getCurrentSemester(dateInput?: string | number | Date | null): SemesterInfo {
+  const d = parseSafeDate(dateInput) || new Date();
+  const month = d.getMonth() + 1; // 1 - 12
+  const year = d.getFullYear();
+
+  let semester: 1 | 2 | 3;
+  let startYear: number;
+  let endYear: number;
+  let label: string;
+
+  if (month >= 9) {
+    semester = 1;
+    startYear = year;
+    endYear = year + 1;
+    label = `Học kỳ 1 (${startYear} - ${endYear})`;
+  } else if (month === 1) {
+    semester = 1;
+    startYear = year - 1;
+    endYear = year;
+    label = `Học kỳ 1 (${startYear} - ${endYear})`;
+  } else if (month >= 2 && month <= 6) {
+    semester = 2;
+    startYear = year - 1;
+    endYear = year;
+    label = `Học kỳ 2 (${startYear} - ${endYear})`;
+  } else {
+    // 7 <= month <= 8
+    semester = 3;
+    startYear = year - 1;
+    endYear = year;
+    label = `Học kỳ Hè (${startYear} - ${endYear})`;
+  }
+
+  const academicYear = `${startYear} - ${endYear}`;
+  return {
+    semester,
+    academicYear,
+    label,
+  };
+}

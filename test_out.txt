@@ -1,0 +1,5 @@
+1: Nhập Môn Trí Tuệ Nhân Tạo
+2: Tư duy tính toán
+3: CSC10006
+4: CSC10014
+5: CSC10006_CQ2024/2

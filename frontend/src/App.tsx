@@ -279,6 +279,7 @@ export const App: React.FC = () => {
       <div className="lg:pl-64 flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <Header
+          semesterLabel={stats.semester?.label}
           onOpenAddModal={() => setIsAddModalOpen(true)}
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
@@ -307,6 +308,7 @@ export const App: React.FC = () => {
                 completionRate={stats.completion_rate}
                 completedCount={stats.completed_deadlines}
                 totalCount={stats.total_deadlines}
+                semesterLabel={stats.semester?.label}
                 onViewAllDeadlines={() => {
                   setActiveTab('deadlines');
                   setFilterStatus('all');
