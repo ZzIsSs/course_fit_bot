@@ -235,6 +235,8 @@ def get_known_modules_for_course(conn, courses_id):
     for row in rows:
         ts = row['time_modified']
         if isinstance(ts, datetime):
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
             result[row['lms_module_id']] = int(ts.timestamp())
         else:
             result[row['lms_module_id']] = int(ts) if ts else 0

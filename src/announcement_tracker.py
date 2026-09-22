@@ -146,18 +146,27 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
                         if file_time > mod_time:
                             mod_time = file_time
 
-                    # Upsert module vào DB
-                    upsert_module(
-                        conn, db_course_id, lms_mod_id,
-                        modname, module.get('name', 'N/A'), mod_time
-                    )
-
-                    # So sánh với dữ liệu cũ (chỉ khi không phải lần chạy đầu)
-                    if not is_first_run:
+                    # Xử lý cập nhật DB và phát hiện thay đổi
+                    if is_first_run:
+                        upsert_module(
+                            conn, db_course_id, lms_mod_id,
+                            modname, module.get('name', 'N/A'), mod_time
+                        )
+                    else:
                         old_time = known_modules.get(lms_mod_id, None)
                         if old_time is None:
+                            upsert_module(
+                                conn, db_course_id, lms_mod_id,
+                                modname, module.get('name', 'N/A'), mod_time
+                            )
+                            known_modules[lms_mod_id] = mod_time
                             new_modules.append((course_info, module))
                         elif mod_time > old_time:
+                            upsert_module(
+                                conn, db_course_id, lms_mod_id,
+                                modname, module.get('name', 'N/A'), mod_time
+                            )
+                            known_modules[lms_mod_id] = mod_time
                             updated_modules.append((course_info, module))
 
         # 4b: Quét bài đăng trên diễn đàn
