@@ -3,7 +3,7 @@ name: Notification Bot
 on:
   schedule:
     - cron: '*/30 * * * *' # Check deadlines + announcements every 30 minutes
-    - cron: '0 0 * * *'    # Daily summary at 00:00 UTC (7:00 AM Vietnam)
+    - cron: '25 23 * * *'    # Daily summary at 23:25 UTC (6:25 AM - 7:00 AM Vietnam with queue delay)
   workflow_dispatch: # Allow manual trigger
     inputs:
       mode:
@@ -41,7 +41,7 @@ jobs:
         run: |
           # If triggered by schedule, check which cron triggered it
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
+            if [ "${{ github.event.schedule }}" = "25 23 * * *" ]; then
               echo "mode=summary" >> $GITHUB_OUTPUT
             else
               echo "mode=notify" >> $GITHUB_OUTPUT
