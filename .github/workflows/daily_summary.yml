@@ -1,0 +1,36 @@
+name: Daily Summary
+
+on:
+  schedule:
+    # 23:55 UTC = 06:55 AM Vietnam Time (chạy trước 7h 5 phút để tránh nghẽn hàng đợi :00 UTC)
+    - cron: '55 23 * * *'
+  workflow_dispatch: # Cho phép bấm chạy thủ công trên GitHub Actions bất kỳ lúc nào
+
+jobs:
+  daily-summary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send Daily Summary
+        env:
+          MOODLE_CALENDAR_URL: ${{ secrets.MOODLE_CALENDAR_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_SERVER_ID: ${{ secrets.DISCORD_SERVER_ID }}
+          MOODLE_TOKEN: ${{ secrets.MOODLE_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
+        run: python main.py --summary
