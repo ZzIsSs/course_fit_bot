@@ -18,10 +18,13 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        interaction = json.loads(body)
-        result = {"type": 1} if interaction.get('type') == 1 else handle_interaction(interaction, DATABASE_URL)
+        try:
+            interaction = json.loads(body)
+            result = {"type": 1} if interaction.get('type') == 1 else handle_interaction(interaction, DATABASE_URL)
+        except Exception:
+            result = {"type": 4, "data": {"content": "⚠️ Đã xảy ra lỗi nội bộ khi xử lý lệnh.", "flags": 64}}
 
         self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.end_headers()
-        self.wfile.write(json.dumps(result).encode('utf-8'))
+        self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))

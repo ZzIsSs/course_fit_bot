@@ -14,24 +14,38 @@ def get_db(database_url):
     """Context manager cho một phiên làm việc với database.
 
     Tự động commit khi thành công, rollback khi có lỗi.
+    Đảm bảo an toàn cho Serverless với connect_timeout=5.
 
     Usage:
         with get_db(database_url) as conn:
             result = fetch_one(conn, "SELECT 1")
     """
+    if not database_url:
+        raise ValueError("DATABASE_URL chưa được cấu hình hoặc rỗng.")
+
     conn = None
     try:
-        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(
+            database_url,
+            cursor_factory=RealDictCursor,
+            connect_timeout=5
+        )
         yield conn
         conn.commit()
     except Exception as e:
         if conn:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         logging.error(f"Database error: {e}")
         raise
     finally:
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def execute(conn, sql, params=None):

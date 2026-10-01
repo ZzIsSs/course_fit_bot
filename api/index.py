@@ -125,8 +125,11 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            interaction = json.loads(body)
-            result = {"type": 1} if interaction.get("type") == 1 else handle_interaction(interaction, DATABASE_URL)
+            try:
+                interaction = json.loads(body)
+                result = {"type": 1} if interaction.get("type") == 1 else handle_interaction(interaction, DATABASE_URL)
+            except Exception:
+                result = {"type": 4, "data": {"content": "⚠️ Đã xảy ra lỗi nội bộ khi xử lý lệnh.", "flags": 64}}
             self._send_json(200, result)
             return
 
@@ -153,11 +156,11 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(400, {"ok": False, "error": "Body không phải JSON hợp lệ."})
                 return
 
-            mon = (data.get("mon") or "").strip().upper()
-            ten = (data.get("ten") or "").strip()
+            mon = " ".join((data.get("mon") or "").strip().split()).upper()[:100]
+            ten = " ".join((data.get("ten") or "").strip().split())[:250]
             han_chot = (data.get("han_chot") or "").strip()
-            nguoi = (data.get("nguoi_phu_trach") or "Web Dashboard").strip()
-            ghi_chu = (data.get("ghi_chu_url") or "").strip()
+            nguoi = " ".join((data.get("nguoi_phu_trach") or "Web Dashboard").strip().split())[:95]
+            ghi_chu = (data.get("ghi_chu_url") or "").strip()[:500]
 
             if not mon or not ten or not han_chot:
                 self._send_json(400, {"ok": False, "error": "Vui lòng điền đủ: mon, ten, han_chot."})
@@ -178,7 +181,10 @@ class handler(BaseHTTPRequestHandler):
                         added_by=nguoi,
                         source="manual"
                     )
-                self._send_json(201, {"ok": True, "deadlines_id": deadlines_id, "message": "Thêm deadline thành công!"})
+                if deadlines_id is None:
+                    self._send_json(200, {"ok": True, "duplicate": True, "message": "Deadline này đã tồn tại, không tạo trùng."})
+                else:
+                    self._send_json(201, {"ok": True, "deadlines_id": deadlines_id, "message": "Thêm deadline thành công!"})
             except Exception as e:
                 self._send_json(500, {"ok": False, "error": f"Lỗi DB khi thêm deadline: {str(e)}"})
             return

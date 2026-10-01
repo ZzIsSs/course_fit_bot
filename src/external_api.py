@@ -49,10 +49,10 @@ def handle_add_deadline(body_text, database_url):
     if not isinstance(data, dict):
         return 400, {"ok": False, "error": "Body JSON phải là một object."}
 
-    ten = (data.get('ten') or '').strip()
+    ten = " ".join((data.get('ten') or '').strip().split())[:250]
     han_chot_raw = (data.get('han_chot') or '').strip()
-    mon = (data.get('mon') or '').strip().upper()
-    nguon = (data.get('nguon') or 'External API').strip()
+    mon = (data.get('mon') or '').strip().upper()[:100]
+    nguon = " ".join((data.get('nguon') or 'External API').strip().split())[:95]
     ext_id = (data.get('id') or '').strip()[:_MAX_EXT_ID_LEN]
 
     if not ten or not han_chot_raw or not mon:
@@ -65,14 +65,17 @@ def handle_add_deadline(body_text, database_url):
     # Chống trùng: dùng id bên thứ 3 gửi nếu có, không thì tự sinh uuid
     lms_id = f"external-{ext_id}" if ext_id else f"external-{uuid.uuid4()}"
 
-    with get_db(database_url) as conn:
-        courses_id = get_or_create_course(conn, mon)
-        deadlines_id = insert_deadline_manual(
-            conn, courses_id, ten, lms_id, due_time,
-            source_url=f"API bên thứ 3 ({nguon})",
-            added_by=nguon,
-            source='external',
-        )
+    try:
+        with get_db(database_url) as conn:
+            courses_id = get_or_create_course(conn, mon)
+            deadlines_id = insert_deadline_manual(
+                conn, courses_id, ten, lms_id, due_time,
+                source_url=f"API bên thứ 3 ({nguon})",
+                added_by=nguon,
+                source='external',
+            )
+    except Exception as e:
+        return 500, {"ok": False, "error": f"Lỗi CSDL khi thêm deadline: {str(e)}"}
 
     if deadlines_id is None:
         return 200, {"ok": True, "duplicate": True, "message": "Deadline này đã tồn tại, bỏ qua trùng lặp."}

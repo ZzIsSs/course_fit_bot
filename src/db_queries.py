@@ -19,21 +19,25 @@ def get_or_create_course(conn, course_name, lms_courses_id=None, display_name=No
     Nếu có display_name thì cập nhật tên hiển thị tiếng Việt.
     Returns: courses_id (int)
     """
+    clean_course_name = (course_name or '').strip().upper()[:250]
+    clean_display_name = display_name.strip()[:250] if display_name else None
+    clean_lms_id = str(lms_courses_id).strip()[:50] if lms_courses_id else None
+
     # Tìm theo tên môn (subject code)
     row = fetch_one(conn,
         "SELECT courses_id, lms_courses_id, display_name FROM courses WHERE course_name = %s",
-        (course_name,))
+        (clean_course_name,))
 
     if row:
         # Cập nhật lms_courses_id nếu có giá trị thực từ Moodle API
         updates = []
         params = []
-        if lms_courses_id and str(lms_courses_id) != row.get('lms_courses_id'):
+        if clean_lms_id and clean_lms_id != row.get('lms_courses_id'):
             updates.append("lms_courses_id = %s")
-            params.append(str(lms_courses_id))
-        if display_name and display_name != row.get('display_name'):
+            params.append(clean_lms_id)
+        if clean_display_name and clean_display_name != row.get('display_name'):
             updates.append("display_name = %s")
-            params.append(display_name)
+            params.append(clean_display_name)
         if updates:
             params.append(row['courses_id'])
             execute(conn,
@@ -42,13 +46,13 @@ def get_or_create_course(conn, course_name, lms_courses_id=None, display_name=No
         return row['courses_id']
 
     # Tạo mới — dùng subject code làm lms_courses_id tạm nếu chưa có
-    effective_lms_id = str(lms_courses_id) if lms_courses_id else course_name
+    effective_lms_id = clean_lms_id if clean_lms_id else clean_course_name[:50]
     row = fetch_one(conn,
         """INSERT INTO courses (course_name, lms_courses_id, display_name)
            VALUES (%s, %s, %s)
            ON CONFLICT (course_name) DO UPDATE SET course_name = EXCLUDED.course_name
            RETURNING courses_id""",
-        (course_name, effective_lms_id, display_name))
+        (clean_course_name, effective_lms_id, clean_display_name))
     return row['courses_id']
 
 
@@ -189,13 +193,38 @@ def get_pending_manual_deadlines(conn):
 
 
 def insert_deadline_manual(conn, courses_id, deadline_name, lms_deadlines_id, due_time, source_url, added_by, source='manual'):
-    """ON CONFLICT DO NOTHING: an toàn nếu request bị gửi lặp (retry)."""
+    """Thêm deadline thủ công kèm cơ chế chống trùng lặp nghiệp vụ (Business Idempotency).
+
+    Chống trùng lặp kép:
+    1. Kiểm tra nếu cùng môn học đã tồn tại bài tập cùng tên (case-insensitive) và cùng hạn chót.
+    2. Sử dụng ON CONFLICT (lms_deadlines_id) DO NOTHING để chống retry từ Discord/client.
+    Cắt chuỗi an toàn theo schema để tránh StringDataRightTruncation.
+
+    Returns:
+        deadlines_id (int) nếu tạo mới thành công, None nếu là bản ghi trùng lặp.
+    """
+    clean_name = " ".join((deadline_name or '').strip().split())[:250]
+    clean_url = (source_url or '').strip()[:500]
+    clean_added_by = (added_by or '').strip()[:95]
+    clean_lms_id = (lms_deadlines_id or '').strip()[:50]
+    clean_source = (source or 'manual').strip()[:20]
+
+    # Kiểm tra trùng lặp mức nghiệp vụ: cùng môn, cùng tên bài (case-insensitive), cùng hạn chót
+    existing = fetch_one(conn,
+        """SELECT deadlines_id FROM deadlines
+           WHERE courses_id = %s AND LOWER(deadline_name) = LOWER(%s) AND due_time = %s
+           LIMIT 1""",
+        (courses_id, clean_name, due_time))
+    if existing:
+        logging.info("Bỏ qua deadline trùng nghiệp vụ: '%s' (ID: %s)", clean_name, existing['deadlines_id'])
+        return None
+
     row = fetch_one(conn,
         """INSERT INTO deadlines (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source, added_by)
            VALUES (%s, %s, %s, %s, %s, %s, %s)
            ON CONFLICT (lms_deadlines_id) DO NOTHING
            RETURNING deadlines_id""",
-        (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source, added_by))
+        (courses_id, clean_name, clean_lms_id, due_time, clean_url, clean_source, clean_added_by))
     return row['deadlines_id'] if row else None
 
 
