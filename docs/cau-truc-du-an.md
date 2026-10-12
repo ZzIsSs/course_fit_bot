@@ -1,62 +1,53 @@
-# Cấu trúc thư mục dự án `course_fit_bot`
-
-Dưới đây là cấu trúc hiện tại của dự án cùng với giải thích chi tiết chức năng của từng thư mục và tập tin:
-
-```text
-Notification Project/
-├── .git/                      # Chứa dữ liệu của kho lưu trữ (repository) Git nội bộ.
-├── .github/
-│   └── workflows/
-│       └── notify.yml         # [QUAN TRỌNG] File cấu hình GitHub Actions. Nó lên lịch chạy tự động bot mỗi 30 phút.
-├── doc/                       # Thư mục chứa tài liệu yêu cầu ban đầu của dự án.
-├── .gitignore                 # Cấu hình Git để ẩn (không push) các file rác, file tạm lên GitHub.
-├── main.py                    # [QUAN TRỌNG] File mã nguồn chính của bot. Chịu trách nhiệm lấy file ICS, phân tích và bắn thông báo qua Discord.
-├── requirements.txt           # Danh sách các thư viện Python cần thiết (hiện tại chỉ cần `requests`).
-├── state.json                 # [QUAN TRỌNG] File "trí nhớ" của bot. Nó lưu mã ID của những deadline ĐÃ thông báo để không bị spam 2 lần.
-├── prompt-xay-dung-cong-cu.md # File lưu trữ prompt yêu cầu dự án.
-├── yeu-cau-du-an.md           # File lưu trữ yêu cầu chi tiết dự án.
-├── files.zip                  # File nén chứa tài liệu ban đầu bạn cung cấp.
-├── (Các file rác/file tạm)    # Các file sinh ra trong quá trình mình test và phân tích cấu trúc web:
-│   ├── calendar.ics           
-│   ├── events.txt             
-│   ├── extract.py             
-│   ├── login_forms.txt        
-│   ├── login_page.html        
-│   ├── parsed.html            
-│   ├── Đăng nhập vào trang...mhtml 
-│   └── Moodle CQDT fit...mhtml
-```
-
-## Giải thích chức năng các file cốt lõi đang chạy trên GitHub
-
-### 1. `main.py`
-Đây là bộ não của con bot. Chức năng chính:
-- Nhận URL Lịch (`MOODLE_CALENDAR_URL`) và URL Discord (`DISCORD_WEBHOOK_URL`) từ môi trường an toàn (GitHub Secrets).
-- Đóng giả làm trình duyệt (User-Agent Chrome) để tải file dữ liệu lịch `.ics` trực tiếp từ Moodle mà không cần đăng nhập.
-- Trích xuất thông tin Deadline (Tên sự kiện, Thời gian) bằng Regular Expressions.
-- Đối chiếu với file `state.json`. Nếu gặp ID sự kiện mới tinh chưa từng gửi, nó sẽ gửi tin báo qua Discord (có ping `@everyone`).
-- Cập nhật lại những ID mới gửi vào `state.json`.
-
-### 2. `.github/workflows/notify.yml`
-Đây là công nhân chạy tự động của bạn. Chức năng:
-- Lên lịch báo thức (Cron): `*/30 * * * *` (Chạy lệnh mỗi 30 phút).
-- Tự động tạo một máy ảo Ubuntu nhỏ, cài Python.
-- Truyền các giá trị bảo mật (Secrets) vào cho `main.py` chạy.
-- Sau khi `main.py` chạy xong, file `state.json` sẽ bị thay đổi (do thêm deadline mới vào bộ nhớ). File này sẽ chạy lệnh `git commit` để tự động đẩy sự thay đổi đó lưu ngược lại lên repository để lần chạy sau bot vẫn "nhớ" được.
-
-### 3. `state.json`
-Đơn giản là một file định dạng JSON. Cấu trúc của nó chỉ là:
-```json
-{
-    "notified_items": [
-        "57754@courses.fit.hcmus.edu.vn",
-        "57755@courses.fit.hcmus.edu.vn"
-    ]
-}
-```
-*Chức năng:* Tránh spam. Nếu không có nó, cứ mỗi 30 phút bot sẽ bắn lại toàn bộ 10-20 cái deadline của bạn.
+# Cấu trúc thư mục dự án `course_fit_bot` (Phiên bản đầy đủ)
+> **Dành cho:** Nguyên  
+> **Cập nhật:** Đã bổ sung toàn bộ kiến trúc Serverless, Frontend Dashboard, và module Crawler Moodle mới.
 
 ---
 
-> [!TIP]
-> Lưu ý: Những file được đánh dấu **[QUAN TRỌNG]** là những file đang được đẩy lên và vận hành trực tiếp trên GitHub Repository của bạn. Những file tạm/rác còn lại (như file `.mhtml`, `.html`) chỉ nằm ở máy cá nhân của bạn, không ảnh hưởng đến bot.
+Vui lòng tham khảo tài liệu chi tiết đầy đủ tại: **[`CAU_TRUC_DU_AN.md`](file:///e:/coder/OnlyC(ode)/Notification%20Project/CAU_TRUC_DU_AN.md)** ở thư mục gốc của dự án.
+
+## 1. Sơ đồ phân cấp thư mục chính
+
+```text
+Notification Project/
+├── .github/workflows/           # CI/CD: notify.yml (chạy mỗi 30p), daily_summary.yml (7h sáng)
+├── api/                         # Vercel Serverless Functions: index.py, interactions.py, add_deadline.py
+├── src/                         # Core Python Backend:
+│   ├── app.py                   # Master Orchestrator (chạy luồng kiểm tra, thông báo, sync)
+│   ├── moodle_deadline_crawler.py # Cào Assignment, Quiz, Event từ Moodle API & Auto-complete nộp bài
+│   ├── moodle_api.py            # Client gọi Moodle Web Service API (wstoken)
+│   ├── moodle_parser.py         # Parse ICS, trích xuất mã môn, tính học kỳ, slug tên kênh
+│   ├── announcement_tracker.py  # Quét slide, tài liệu, bài giảng và bài đăng diễn đàn mới
+│   ├── discord_api.py           # Discord REST API v10 client
+│   ├── interactions.py          # Xử lý Slash Command /add_deadline, /deadline
+│   ├── external_api.py          # Xử lý webhook bên thứ ba
+│   ├── event_tracker.py         # Bắt reaction ✅ để đánh dấu hoàn thành
+│   ├── google_calendar_sync.py  # Đồng bộ Google Calendar
+│   ├── notion_sync.py           # Đồng bộ Notion Database
+│   ├── database.py              # PostgreSQL Connection Context Manager
+│   ├── db_queries.py            # DAO Queries
+│   ├── config.py                # Environment configs & Timezone UTC+7
+│   └── utils.py                 # Datetime parsing & timezone utilities
+├── frontend/                    # Web Dashboard (React 18 + Vite + Tailwind CSS)
+│   ├── src/components/          # UI components (Modal, Button, ProgressBar, Toast...)
+│   ├── src/features/            # Deadlines (Kanban, List), Courses, Dashboard, Announcements
+│   └── src/api/                 # API Client gọi Vercel backend
+├── migrations/                  # Script CSDL PostgreSQL (Supabase): 001 -> 005
+├── scripts/                     # Scripts hỗ trợ dev & vận hành
+├── tests/                       # Unit tests & Integration tests
+├── docs/                        # Tài liệu đặc tả kỹ thuật chi tiết
+├── main.py                      # CLI Runner chính
+├── requirements.txt             # Thư viện Python phụ thuộc
+└── vercel.json                  # Cấu hình routing deploy Vercel
+```
+
+## 2. Bảng vai trò các module cốt lõi
+
+| Module / Thư mục | Trách nhiệm chính |
+| :--- | :--- |
+| [`src/app.py`](file:///e:/coder/OnlyC(ode)/Notification%20Project/src/app.py) | Điều phối chu trình quét deadline, chuỗi nhắc 3 ngày / 1 ngày, gửi summary & progress report. |
+| [`src/moodle_deadline_crawler.py`](file:///e:/coder/OnlyC(ode)/Notification%20Project/src/moodle_deadline_crawler.py) | Cào trực tiếp bài tập (`mod_assign`) và quiz (`mod_quiz`) từ Moodle API; tự động đánh dấu hoàn thành khi sinh viên nộp bài. |
+| [`src/announcement_tracker.py`](file:///e:/coder/OnlyC(ode)/Notification%20Project/src/announcement_tracker.py) | Theo dõi tài liệu upload mới (slide, PDF) và bài viết diễn đàn. |
+| [`src/discord_api.py`](file:///e:/coder/OnlyC(ode)/Notification%20Project/src/discord_api.py) | Tạo kênh, phân loại category theo học kỳ, gửi tin nhắn, tạo Scheduled Event. |
+| [`api/index.py`](file:///e:/coder/OnlyC(ode)/Notification%20Project/api/index.py) | REST API phục vụ Web Dashboard hoạt động trên Vercel. |
+| [`frontend/`](file:///e:/coder/OnlyC(ode)/Notification%20Project/frontend/) | Giao diện Web SPA quản trị bài tập (hỗ trợ kéo thả Kanban, lọc môn học). |

@@ -18,6 +18,7 @@ on:
           - sync-channels
           - sync-notion
           - sync-gcal
+          - crawl-deadlines
 
 jobs:
   run-bot:
@@ -64,6 +65,8 @@ jobs:
             python main.py --sync-notion
           elif [ "${{ steps.mode.outputs.mode }}" = "sync-gcal" ]; then
             python main.py --sync-gcal
+          elif [ "${{ steps.mode.outputs.mode }}" = "crawl-deadlines" ]; then
+            python main.py --crawl-deadlines
           else
             python main.py
           fi

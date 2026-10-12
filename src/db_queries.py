@@ -228,6 +228,85 @@ def insert_deadline_manual(conn, courses_id, deadline_name, lms_deadlines_id, du
     return row['deadlines_id'] if row else None
 
 
+def upsert_deadline_from_api(conn, courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source='moodle_api'):
+    """Upsert deadline thu thập từ Moodle REST API (assign/quiz).
+
+    Khác với insert_deadline thường:
+    - Dùng ON CONFLICT để CẬP NHẬT due_time nếu giảng viên thay đổi hạn chót.
+    - Không tạo trùng nếu ICS đã có cùng assignment/quiz (kiểm tra cả tên + môn).
+    - Trả về ('inserted' | 'updated' | 'skipped', deadlines_id | None).
+
+    Returns:
+        Tuple (action, deadlines_id):
+            - ('inserted', id) khi tạo mới
+            - ('updated', id) khi cập nhật due_time
+            - ('skipped', None) khi đã tồn tại và không thay đổi gì
+    """
+    clean_name = " ".join((deadline_name or '').strip().split())[:250]
+    clean_url = (source_url or '').strip()[:500]
+    clean_lms_id = (lms_deadlines_id or '').strip()[:50]
+    clean_source = (source or 'moodle_api').strip()[:20]
+
+    # Kiểm tra đã tồn tại theo lms_deadlines_id chưa
+    existing = fetch_one(conn,
+        """SELECT deadlines_id, due_time, source FROM deadlines
+           WHERE lms_deadlines_id = %s
+           LIMIT 1""",
+        (clean_lms_id,))
+
+    if existing:
+        # Đã tồn tại — kiểm tra xem due_time có thay đổi không
+        from src.utils import ensure_tz
+        old_due = ensure_tz(existing['due_time'])
+        new_due = ensure_tz(due_time) if due_time else None
+
+        if new_due and abs((new_due - old_due).total_seconds()) > 60:
+            # GV đổi hạn chót → cập nhật
+            execute(conn,
+                """UPDATE deadlines SET due_time = %s, deadline_name = %s,
+                   source_url = %s, reminded_3d = false, reminded_1d = false
+                   WHERE deadlines_id = %s""",
+                (new_due, clean_name, clean_url, existing['deadlines_id']))
+            logging.info("Cập nhật due_time cho deadline '%s' (ID: %s)", clean_name, existing['deadlines_id'])
+            return ('updated', existing['deadlines_id'])
+        return ('skipped', existing['deadlines_id'])
+
+    # Kiểm tra trùng lặp mức nghiệp vụ: cùng môn, cùng tên (case-insensitive), cùng hạn chót
+    # Có thể ICS đã tạo deadline này trước → không tạo lại
+    biz_existing = fetch_one(conn,
+        """SELECT deadlines_id FROM deadlines
+           WHERE courses_id = %s AND LOWER(deadline_name) = LOWER(%s) AND due_time = %s
+           LIMIT 1""",
+        (courses_id, clean_name, due_time))
+    if biz_existing:
+        logging.info("Deadline '%s' đã tồn tại từ nguồn khác (ID: %s), bỏ qua.", clean_name, biz_existing['deadlines_id'])
+        return ('skipped', biz_existing['deadlines_id'])
+
+    # Tạo mới
+    row = fetch_one(conn,
+        """INSERT INTO deadlines (courses_id, deadline_name, lms_deadlines_id, due_time, source_url, source)
+           VALUES (%s, %s, %s, %s, %s, %s)
+           ON CONFLICT (lms_deadlines_id) DO NOTHING
+           RETURNING deadlines_id""",
+        (courses_id, clean_name, clean_lms_id, due_time, clean_url, clean_source))
+
+    if row:
+        logging.info("Tạo deadline mới từ API: '%s' (ID: %s)", clean_name, row['deadlines_id'])
+        return ('inserted', row['deadlines_id'])
+    return ('skipped', None)
+
+
+def get_api_deadlines_for_auto_complete(conn):
+    """Lấy các deadline từ Moodle API (assign) chưa completed, để kiểm tra trạng thái nộp bài."""
+    return fetch_all(conn,
+        """SELECT d.deadlines_id, d.lms_deadlines_id, d.deadline_name, c.course_name
+           FROM deadlines d
+           JOIN courses c ON d.courses_id = c.courses_id
+           WHERE d.completed = false
+             AND d.lms_deadlines_id LIKE 'moodle-assign-%%'
+             AND d.due_time >= now() - interval '7 days'""")
+
+
 def get_course_name_by_chat_id(conn, chat_id):
     """Tự nhận diện môn học dựa vào kênh đang gõ lệnh — khỏi cần gõ mã môn."""
     row = fetch_one(conn, "SELECT course_name FROM courses WHERE chat_id = %s", (str(chat_id),))

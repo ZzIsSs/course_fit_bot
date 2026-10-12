@@ -2,7 +2,7 @@ import sys
 from src.app import (
     run_main_bot, send_daily_summary, send_progress_report,
     check_announcements, sync_channels, sync_notion, sync_google_calendar,
-    run_deduplicate_messages
+    run_deduplicate_messages, crawl_deadlines_standalone
 )
 
 if __name__ == "__main__":
@@ -19,6 +19,8 @@ if __name__ == "__main__":
             sync_notion()
         elif sys.argv[1] in ("--sync-gcal", "--sync-google-calendar"):
             sync_google_calendar()
+        elif sys.argv[1] == "--crawl-deadlines":
+            crawl_deadlines_standalone()
         elif sys.argv[1] in ("--dedup", "--clean-duplicates"):
             channel_name = None
             scan_limit = 100
@@ -48,7 +50,7 @@ if __name__ == "__main__":
             run_deduplicate_messages(channel_name=channel_name, scan_limit=scan_limit, dry_run=dry_run)
         else:
             print(f"Unknown argument: {sys.argv[1]}")
-            print("Usage: python main.py [--summary | --progress | --announcements | --sync-channels | --sync-notion | --sync-gcal | --dedup]")
+            print("Usage: python main.py [--summary | --progress | --announcements | --sync-channels | --sync-notion | --sync-gcal | --crawl-deadlines | --dedup]")
     else:
         run_main_bot()
 

@@ -24,6 +24,7 @@ from src.moodle_parser import (
 from src.moodle_api import get_site_info, get_enrolled_courses
 from src.event_tracker import check_completions
 from src.announcement_tracker import check_moodle_updates
+from src.moodle_deadline_crawler import crawl_moodle_deadlines
 from src.notion_sync import NotionSync
 from src.google_calendar_sync import GoogleCalendarSync
 
@@ -91,6 +92,20 @@ def run_main_bot():
         # Check completions from previous runs (check ✅ reactions)
         if bot_user_id:
             check_completions(bot_token, guild_id, bot_user_id, conn, notion=notion, gcal=gcal)
+
+        # ===== Thu thập deadline từ Moodle API (assignments, quizzes, auto-complete) =====
+        moodle_token = env.get('moodle_token')
+        if moodle_token:
+            logging.info("Bắt đầu thu thập deadline từ Moodle API...")
+            try:
+                crawl_stats = crawl_moodle_deadlines(moodle_token, conn)
+                if crawl_stats.get('inserted', 0) > 0 or crawl_stats.get('updated', 0) > 0:
+                    logging.info(
+                        "Moodle API Crawler: %d deadline mới, %d cập nhật, %d auto-complete.",
+                        crawl_stats['inserted'], crawl_stats['updated'], crawl_stats['auto_completed']
+                    )
+            except Exception as e:
+                logging.error("Lỗi khi thu thập deadline từ Moodle API: %s", e)
 
         now = datetime.now(timezone.utc)
 
@@ -247,6 +262,36 @@ def run_main_bot():
                 logging.error(f"Lỗi khi quét thông báo Moodle: {e}")
         else:
             logging.info("Bỏ qua kiểm tra Moodle (chưa có MOODLE_TOKEN).")
+
+
+# ==================== THU THẬP DEADLINE TỪ MOODLE API ====================
+
+def crawl_deadlines_standalone():
+    """Chạy riêng module thu thập deadline từ Moodle API.
+
+    Sử dụng: python main.py --crawl-deadlines
+    Yêu cầu: MOODLE_TOKEN phải được cấu hình.
+    """
+    env = load_env()
+    if not env:
+        return
+
+    moodle_token = env.get('moodle_token')
+    if not moodle_token:
+        logging.error("MOODLE_TOKEN chưa được cấu hình. Không thể thu thập deadline từ API.")
+        return
+
+    database_url = env['database_url']
+
+    with get_db(database_url) as conn:
+        stats = crawl_moodle_deadlines(moodle_token, conn)
+
+    logging.info(
+        "Kết quả thu thập: Assignments=%d, Quizzes=%d, Calendar=%d | "
+        "Mới=%d, Cập nhật=%d, Auto-complete=%d",
+        stats['assignments'], stats['quizzes'], stats['calendar'],
+        stats['inserted'], stats['updated'], stats['auto_completed']
+    )
 
 
 # ==================== BÁO CÁO HẰNG NGÀY ====================

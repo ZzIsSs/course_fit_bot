@@ -120,3 +120,90 @@ def get_forum_discussions(token, forum_id, per_page=10):
     if isinstance(data, list):
         return data
     return None
+
+
+# ==================== BÀI TẬP (ASSIGNMENTS) ====================
+
+def get_assignments(token, course_ids):
+    """Lấy danh sách bài tập (assignments) cho nhiều khóa học cùng lúc.
+
+    Args:
+        token: Moodle token.
+        course_ids: List các course ID (int) từ Moodle.
+
+    Returns:
+        Dict chứa key 'courses', mỗi course có list 'assignments'
+        với các trường quan trọng: id, cmid, name, duedate, cutoffdate, ...
+        Hoặc None nếu lỗi.
+    """
+    params = {f'courseids[{i}]': cid for i, cid in enumerate(course_ids)}
+    return _call_api(token, 'mod_assign_get_assignments', **params)
+
+
+def get_submission_status(token, assign_id, user_id=None):
+    """Kiểm tra trạng thái nộp bài tập của sinh viên.
+
+    Args:
+        token: Moodle token.
+        assign_id: ID của assignment (không phải cmid).
+        user_id: ID người dùng (nếu None, Moodle dùng user hiện tại).
+
+    Returns:
+        Dict chứa 'lastattempt.submission.status' = 'submitted' | 'new' | 'draft', ...
+        Hoặc None nếu lỗi.
+    """
+    params = {'assignid': assign_id}
+    if user_id is not None:
+        params['userid'] = user_id
+    return _call_api(token, 'mod_assign_get_submission_status', **params)
+
+
+# ==================== BÀI KIỂM TRA (QUIZZES) ====================
+
+def get_quizzes(token, course_ids):
+    """Lấy danh sách bài kiểm tra (quizzes) cho nhiều khóa học.
+
+    Args:
+        token: Moodle token.
+        course_ids: List các course ID (int) từ Moodle.
+
+    Returns:
+        Dict chứa key 'quizzes', mỗi quiz có: id, coursemodule, course,
+        name, timeopen, timeclose, ...
+        Hoặc None nếu lỗi.
+    """
+    params = {f'courseids[{i}]': cid for i, cid in enumerate(course_ids)}
+    return _call_api(token, 'mod_quiz_get_quizzes_by_courses', **params)
+
+
+# ==================== SỰ KIỆN LỊCH (CALENDAR ACTION EVENTS) ====================
+
+def get_calendar_action_events(token, timesort_from=None, timesort_to=None, limit=50):
+    """Lấy các sự kiện 'cần hành động' từ Moodle Calendar API.
+
+    Trả về các assignment/quiz/event mà sinh viên cần hoàn thành,
+    bao gồm cả những event chưa có trong ICS.
+
+    Args:
+        token: Moodle token.
+        timesort_from: Unix timestamp bắt đầu (mặc định: hiện tại).
+        timesort_to: Unix timestamp kết thúc (mặc định: 90 ngày sau).
+        limit: Số lượng event tối đa (mặc định 50).
+
+    Returns:
+        Dict chứa key 'events', mỗi event có: id, name, timestart,
+        timeduration, course, action, url, ...
+        Hoặc None nếu lỗi.
+    """
+    import time
+    params = {
+        'limitnum': limit,
+    }
+    if timesort_from is not None:
+        params['timesortfrom'] = timesort_from
+    else:
+        params['timesortfrom'] = int(time.time())
+    if timesort_to is not None:
+        params['timesortto'] = timesort_to
+    return _call_api(token, 'core_calendar_get_action_events_by_timesort', **params)
+
