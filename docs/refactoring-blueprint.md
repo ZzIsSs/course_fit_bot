@@ -340,3 +340,23 @@ python -c "import api.index"                                # web bundle imports
 cd frontend && npm run build                                # passes
 grep -rn "\.\./\.\./" frontend/src                          # expect 0
 ```
+
+---
+
+## 5. Phase 4 Carry-over
+
+### 5.1 `extract_display_name` samples (from the deleted `tests/test_extract*.py`)
+
+The Phase 2 cleanup deleted the scratch scripts `tests/test_extract{,2,3}.py`. Their inputs are kept here so Phase 4 can turn them into `tests/unit/domain/test_course_naming.py`. The **Current output** column was recorded on 2026-10-15 by running the real `src.moodle_parser.extract_display_name`. The **Expected** column is the scratch scripts' goal, taken from `test_out3.txt` for the experimental `smart_extract_display_name`.
+
+| Input | Current output | Expected | Status |
+|---|---|---|---|
+| `CQ2526HK2_CSC10014_CQ2024/2 - Nhập Môn Trí Tuệ Nhân Tạo` | `'Nhập Môn Trí Tuệ Nhân Tạo'` | `'Nhập Môn Trí Tuệ Nhân Tạo'` | ✅ |
+| `Tư duy tính toán - CQ2024/2` | `'Tư duy tính toán'` | `'Tư duy tính toán'` | ✅ |
+| `Cơ sở dữ liệu - CSC10006` | `'CSC10006'` | `'Cơ sở dữ liệu'` | ⚠️ Probable bug |
+| `CSC10014` | `'CSC10014'` | `None` (scratch) | Needs a decision: callers may rely on the code being returned |
+| `CSC10006_CQ2024/2` | `'CSC10006_CQ2024/2'` | — (not in scratch lists) | Needs a decision |
+| `[CQ2024/2] Mạng Máy Tính` | `'[CQ2024/2] Mạng Máy Tính'` | `'Mạng Máy Tính'` | ⚠️ Probable bug |
+| `CSC13102 - Hệ điều hành (TH)` | `'Hệ điều hành (TH)'` | `'Hệ điều hành'` | ⚠️ Probable bug |
+
+**Phase 4 rule:** first add the tests as **characterization tests** that pin the *current output*, so moving the function doesn't change behaviour. Fix the ⚠️ rows later, in a separate behaviour-change commit, and update those tests in that commit.

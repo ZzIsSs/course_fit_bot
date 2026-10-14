@@ -6,7 +6,6 @@ __pycache__/
 # Environment & Credentials
 .env
 *.json
-!data/*.json
 !vercel.json
 !frontend/*.json
 !pyproject.toml
