@@ -1,12 +1,12 @@
 # Exclude bot CLI runner & background logic from Vercel Serverless Functions
 main.py
-src/app.py
-src/google_calendar_sync.py
-src/announcement_tracker.py
-src/notion_sync.py
-src/moodle_api.py
-src/event_tracker.py
-# KHÔNG ignore src/moodle_parser.py: api/index.py (/api/stats) import get_current_semester.
+course_bot/app.py
+course_bot/google_calendar_sync.py
+course_bot/announcement_tracker.py
+course_bot/notion_sync.py
+course_bot/moodle_api.py
+course_bot/event_tracker.py
+# KHÔNG ignore course_bot/moodle_parser.py: api/index.py (/api/stats) import get_current_semester.
 # tests/test_vercel_bundle.py sẽ fail nếu file nào bị ignore mà vẫn được api/ import.
 
 # Exclude docs, tests, scripts & CI

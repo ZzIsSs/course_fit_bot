@@ -10,11 +10,11 @@ sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 # Thêm project root vào path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.moodle_api import (
+from course_bot.moodle_api import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )
-from src.moodle_parser import extract_subject, extract_display_name
+from course_bot.moodle_parser import extract_subject, extract_display_name
 
 
 def main():
@@ -64,7 +64,7 @@ def main():
         if subject_code == "General" and display_name:
             subject_code = display_name
             
-        from src.moodle_parser import slugify_channel_name
+        from course_bot.moodle_parser import slugify_channel_name
         chan_name = slugify_channel_name(subject_code, display_name)
         
         print(f"   {i}. [Kênh: #{chan_name}] {course_fullname}")

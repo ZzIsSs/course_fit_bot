@@ -1,5 +1,7 @@
-from datetime import timezone, datetime
+from datetime import timezone, timedelta, datetime
 from typing import Optional
+
+LOCAL_TZ = timezone(timedelta(hours=7))
 
 
 def ensure_tz(dt: datetime) -> datetime:

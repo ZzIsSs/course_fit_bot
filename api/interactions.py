@@ -2,7 +2,7 @@ import os, sys, json
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.interactions import verify_signature, handle_interaction
+from course_bot.interactions import verify_signature, handle_interaction
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 

@@ -7,7 +7,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from src.database import execute, fetch_one, fetch_all
+from course_bot.database import execute, fetch_one, fetch_all
 
 
 # ==================== COURSES ====================
@@ -256,7 +256,7 @@ def upsert_deadline_from_api(conn, courses_id, deadline_name, lms_deadlines_id, 
 
     if existing:
         # Đã tồn tại — kiểm tra xem due_time có thay đổi không
-        from src.utils import ensure_tz
+        from course_bot.core.time_utils import ensure_tz
         old_due = ensure_tz(existing['due_time'])
         new_due = ensure_tz(due_time) if due_time else None
 

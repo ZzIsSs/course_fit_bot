@@ -8,10 +8,10 @@ import hmac
 import uuid
 import json
 
-from src.database import get_db
-from src.db_queries import get_or_create_course, insert_deadline_manual
-from src.utils import parse_due_time
-from src.config import LOCAL_TZ
+from course_bot.database import get_db
+from course_bot.db_queries import get_or_create_course, insert_deadline_manual
+from course_bot.core.time_utils import parse_due_time
+from course_bot.core.time_utils import LOCAL_TZ
 
 EXTERNAL_API_KEY = os.environ.get('EXTERNAL_API_KEY')
 

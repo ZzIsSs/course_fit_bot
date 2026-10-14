@@ -2,9 +2,10 @@ import logging
 import re
 from datetime import datetime, timezone, timedelta
 
-from src.config import load_env, LOCAL_TZ
-from src.database import get_db
-from src.db_queries import (
+from course_bot.core.config import load_env
+from course_bot.core.time_utils import LOCAL_TZ
+from course_bot.database import get_db
+from course_bot.db_queries import (
     get_or_create_course, get_deadline_by_lms_id, insert_deadline,
     update_deadline_notified, update_deadline_discord_info,
     get_all_deadlines_with_course, insert_notification,
@@ -12,21 +13,21 @@ from src.db_queries import (
     get_course_discord_category, set_course_discord_category,
     get_pending_manual_deadlines
 )
-from src.discord_api import (
+from course_bot.discord_api import (
     get_bot_user, get_guild_channels, create_channel, rename_channel,
     send_message, add_reaction, create_scheduled_event,
     resolve_category, deduplicate_channel_messages
 )
-from src.moodle_parser import (
+from course_bot.moodle_parser import (
     fetch_and_parse_events, slugify_channel_name,
     extract_display_name, extract_subject, extract_semester_index
 )
-from src.moodle_api import get_site_info, get_enrolled_courses
-from src.event_tracker import check_completions
-from src.announcement_tracker import check_moodle_updates
-from src.moodle_deadline_crawler import crawl_moodle_deadlines
-from src.notion_sync import NotionSync
-from src.google_calendar_sync import GoogleCalendarSync
+from course_bot.moodle_api import get_site_info, get_enrolled_courses
+from course_bot.event_tracker import check_completions
+from course_bot.announcement_tracker import check_moodle_updates
+from course_bot.moodle_deadline_crawler import crawl_moodle_deadlines
+from course_bot.notion_sync import NotionSync
+from course_bot.google_calendar_sync import GoogleCalendarSync
 
 
 # ==================== TIỆN ÍCH ====================
@@ -43,7 +44,7 @@ def _build_event_url(uid):
     return base_url
 
 
-from src.utils import ensure_tz as _ensure_tz
+from course_bot.core.time_utils import ensure_tz as _ensure_tz
 
 
 # ==================== HÀM CHÍNH ====================

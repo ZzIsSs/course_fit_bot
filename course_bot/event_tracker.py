@@ -1,7 +1,7 @@
 import logging
 
-from src.discord_api import get_reaction_users, update_scheduled_event
-from src.db_queries import get_tracked_deadlines, mark_deadline_completed
+from course_bot.discord_api import get_reaction_users, update_scheduled_event
+from course_bot.db_queries import get_tracked_deadlines, mark_deadline_completed
 
 
 # ==================== KIỂM TRA HOÀN THÀNH ====================

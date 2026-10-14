@@ -23,7 +23,7 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-from src.app import run_deduplicate_messages
+from course_bot.app import run_deduplicate_messages
 
 
 def main():

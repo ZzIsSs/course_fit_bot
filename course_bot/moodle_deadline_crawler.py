@@ -14,13 +14,13 @@ Sử dụng MOODLE_TOKEN để gọi:
 import logging
 from datetime import datetime, timezone, timedelta
 
-from src.moodle_api import (
+from course_bot.moodle_api import (
     get_site_info, get_enrolled_courses,
     get_assignments, get_quizzes,
     get_calendar_action_events, get_submission_status
 )
-from src.moodle_parser import extract_subject, extract_display_name
-from src.db_queries import (
+from course_bot.moodle_parser import extract_subject, extract_display_name
+from course_bot.db_queries import (
     get_or_create_course, upsert_deadline_from_api,
     get_api_deadlines_for_auto_complete, mark_deadline_completed
 )

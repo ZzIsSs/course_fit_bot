@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone, timedelta
 
-from src.google_calendar_sync import (
+from course_bot.google_calendar_sync import (
     GoogleCalendarSync,
     _parse_credentials,
     LOCAL_TZ,
@@ -55,7 +55,7 @@ class TestGoogleCalendarSync(unittest.TestCase):
         self.assertIsNone(creds)
 
     @patch("googleapiclient.discovery.build")
-    @patch("src.google_calendar_sync._parse_credentials")
+    @patch("course_bot.google_calendar_sync._parse_credentials")
     def test_init_success(self, mock_parse_creds, mock_build):
         mock_parse_creds.return_value = MagicMock()
         mock_service = MagicMock()
@@ -75,7 +75,7 @@ class TestGoogleCalendarSync(unittest.TestCase):
         self.assertEqual(stats["added"], 0)
 
     @patch("googleapiclient.discovery.build")
-    @patch("src.google_calendar_sync._parse_credentials")
+    @patch("course_bot.google_calendar_sync._parse_credentials")
     def test_add_deadline_new_event(self, mock_parse_creds, mock_build):
         mock_parse_creds.return_value = MagicMock()
         mock_service = MagicMock()
@@ -111,7 +111,7 @@ class TestGoogleCalendarSync(unittest.TestCase):
         self.assertEqual(len(body["reminders"]["overrides"]), 3)
 
     @patch("googleapiclient.discovery.build")
-    @patch("src.google_calendar_sync._parse_credentials")
+    @patch("course_bot.google_calendar_sync._parse_credentials")
     def test_add_deadline_naive_utc_datetime(self, mock_parse_creds, mock_build):
         mock_parse_creds.return_value = MagicMock()
         mock_service = MagicMock()
@@ -139,7 +139,7 @@ class TestGoogleCalendarSync(unittest.TestCase):
 
 
     @patch("googleapiclient.discovery.build")
-    @patch("src.google_calendar_sync._parse_credentials")
+    @patch("course_bot.google_calendar_sync._parse_credentials")
     def test_mark_completed(self, mock_parse_creds, mock_build):
         mock_parse_creds.return_value = MagicMock()
         mock_service = MagicMock()

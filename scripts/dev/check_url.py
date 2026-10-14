@@ -1,10 +1,10 @@
 import sys
 import os
 
-# Ensure src module is accessible
+# Ensure course_bot package is accessible
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.moodle_parser import fetch_and_parse_events
+from course_bot.moodle_parser import fetch_and_parse_events
 
 def main():
     print("="*50)

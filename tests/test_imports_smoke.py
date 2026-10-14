@@ -12,8 +12,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Đổi tên package ở đây khi chuyển src/ -> course_bot/
-PACKAGE = "src"
+PACKAGE = "course_bot"
 
 
 def _package_modules():

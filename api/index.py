@@ -19,14 +19,14 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# Đảm bảo import được các module trong src/
+# Đảm bảo import được package course_bot/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.database import get_db
-from src.interactions import verify_signature, handle_interaction
-from src.external_api import verify_api_key, handle_add_deadline
-from src.utils import parse_due_time
-from src.config import LOCAL_TZ
-from src.db_queries import (
+from course_bot.database import get_db
+from course_bot.interactions import verify_signature, handle_interaction
+from course_bot.external_api import verify_api_key, handle_add_deadline
+from course_bot.core.time_utils import parse_due_time
+from course_bot.core.time_utils import LOCAL_TZ
+from course_bot.db_queries import (
     get_or_create_course,
     insert_deadline_manual,
     toggle_deadline_completed,
@@ -79,7 +79,7 @@ class handler(BaseHTTPRequestHandler):
             try:
                 with get_db(DATABASE_URL) as conn:
                     stats = get_dashboard_stats(conn)
-                from src.moodle_parser import get_current_semester
+                from course_bot.moodle_parser import get_current_semester
                 stats["semester"] = get_current_semester()
                 self._send_json(200, {"ok": True, "data": stats})
             except Exception as e:

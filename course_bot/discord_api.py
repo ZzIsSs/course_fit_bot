@@ -5,7 +5,8 @@ import requests
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote as url_quote
 
-from src.config import DISCORD_API_BASE, LOCAL_TZ
+from course_bot.core.config import DISCORD_API_BASE
+from course_bot.core.time_utils import LOCAL_TZ
 
 # ==================== HEADERS ====================
 

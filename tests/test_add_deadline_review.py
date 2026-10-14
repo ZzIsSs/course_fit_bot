@@ -4,10 +4,10 @@ import unittest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from src.utils import parse_due_time, ensure_tz
-from src.interactions import sanitize_discord_text, _public, _handle_add_deadline
-from src.db_queries import insert_deadline_manual, get_or_create_course
-from src.config import LOCAL_TZ
+from course_bot.core.time_utils import parse_due_time, ensure_tz
+from course_bot.interactions import sanitize_discord_text, _public, _handle_add_deadline
+from course_bot.db_queries import insert_deadline_manual, get_or_create_course
+from course_bot.core.time_utils import LOCAL_TZ
 
 
 class TestAddDeadlineRefactor(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestAddDeadlineRefactor(unittest.TestCase):
         """Kiểm tra giải quyết triệt để lỗi Leap Year Trap khi nhập 29/02 không có năm."""
         # Giả lập năm hiện tại là 2024 (năm nhuận)
         fake_now = datetime(2024, 2, 1, 10, 0, tzinfo=LOCAL_TZ)
-        with patch("src.utils.datetime") as mock_dt:
+        with patch("course_bot.core.time_utils.datetime") as mock_dt:
             mock_dt.now.return_value = fake_now
             mock_dt.strptime = datetime.strptime
             
@@ -46,7 +46,7 @@ class TestAddDeadlineRefactor(unittest.TestCase):
     def test_parse_due_time_year_rollover(self):
         """Kiểm tra Year Rollover: nhập ngày tháng 1 vào cuối năm (tháng 12) -> tự nhảy sang năm sau."""
         fake_now = datetime(2026, 12, 28, 10, 0, tzinfo=LOCAL_TZ)
-        with patch("src.utils.datetime") as mock_dt:
+        with patch("course_bot.core.time_utils.datetime") as mock_dt:
             mock_dt.now.return_value = fake_now
             mock_dt.strptime = datetime.strptime
 
@@ -80,7 +80,7 @@ class TestAddDeadlineRefactor(unittest.TestCase):
         due_time = datetime(2026, 10, 15, 16, 59, tzinfo=timezone.utc)
 
         # Lần 1: Chưa có bài tập trong DB -> fetch_one trả về None cho check, trả về ID cho insert
-        with patch("src.db_queries.fetch_one") as mock_fetch:
+        with patch("course_bot.db_queries.fetch_one") as mock_fetch:
             mock_fetch.side_effect = [
                 None,                       # check existing -> None
                 {"deadlines_id": 101}       # insert -> ID 101
@@ -93,7 +93,7 @@ class TestAddDeadlineRefactor(unittest.TestCase):
             self.assertEqual(res_id, 101)
 
         # Lần 2: Đã có bài tập cùng môn, tên, hạn chót trong DB -> trả về None (bỏ qua duplicate)
-        with patch("src.db_queries.fetch_one") as mock_fetch:
+        with patch("course_bot.db_queries.fetch_one") as mock_fetch:
             mock_fetch.return_value = {"deadlines_id": 101}  # check existing -> tìm thấy 101
             res_id = insert_deadline_manual(
                 mock_conn, courses_id=1, deadline_name="Bài tập 1",

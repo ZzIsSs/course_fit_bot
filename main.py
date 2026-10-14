@@ -1,5 +1,5 @@
 import sys
-from src.app import (
+from course_bot.app import (
     run_main_bot, send_daily_summary, send_progress_report,
     check_announcements, sync_channels, sync_notion, sync_google_calendar,
     run_deduplicate_messages, crawl_deadlines_standalone

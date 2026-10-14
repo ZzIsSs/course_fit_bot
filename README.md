@@ -15,7 +15,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
                 └───────┬──────────────────────────────┬─────────────────────────┘
                         │                              │ assignments, quizzes, calendar,
                         ▼                              ▼ modules, forums, submission status
-   GitHub Actions / Termux cron ──►  main.py  ──►  src/app.py
+   GitHub Actions / Termux cron ──►  main.py  ──►  course_bot/app.py
                                                    │   ├─ moodle_parser / moodle_deadline_crawler
                                                    │   ├─ announcement_tracker
                                                    │   └─ event_tracker (react ✅ → hoàn thành)
@@ -57,18 +57,18 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | Đường dẫn | Mục đích |
 |---|---|
 | `main.py` | CLI entry point cho các tác vụ định kỳ (chọn chế độ bằng tham số). |
-| `src/app.py` | Điều phối các luồng chính: thông báo, báo cáo, sync kênh, Notion, GCal, dedup. |
-| `src/config.py` | Đọc biến môi trường (hỗ trợ `.env`) và hằng số (`LOCAL_TZ` = UTC+7). |
-| `src/database.py`, `src/db_queries.py` | Kết nối PostgreSQL và toàn bộ câu truy vấn. |
-| `src/moodle_api.py` | Wrapper gọi Moodle Web Services. |
-| `src/moodle_parser.py` | Tải/parse `.ics`, tách tên môn, tính học kỳ. |
-| `src/moodle_deadline_crawler.py` | Thu thập deadline từ Moodle API và auto-complete bài đã nộp. |
-| `src/announcement_tracker.py` | Phát hiện tài liệu/module và bài đăng diễn đàn mới. |
-| `src/event_tracker.py` | Kiểm tra react `✅` để đánh dấu hoàn thành. |
-| `src/discord_api.py` | Gọi Discord REST API (kênh, tin nhắn, reaction, Scheduled Events). |
-| `src/interactions.py` | Xác thực chữ ký Ed25519 và xử lý Slash Commands. |
-| `src/external_api.py` | Endpoint thêm deadline cho bên thứ 3 (xác thực `X-API-Key`). |
-| `src/notion_sync.py`, `src/google_calendar_sync.py` | Đồng bộ Notion và Google Calendar. |
+| `course_bot/app.py` | Điều phối các luồng chính: thông báo, báo cáo, sync kênh, Notion, GCal, dedup. |
+| `course_bot/core/` | `config.py` (đọc biến môi trường, hỗ trợ `.env`), `time_utils.py` (`LOCAL_TZ` = UTC+7, parse hạn chót), `logging_setup.py`. |
+| `course_bot/database.py`, `course_bot/db_queries.py` | Kết nối PostgreSQL và toàn bộ câu truy vấn. |
+| `course_bot/moodle_api.py` | Wrapper gọi Moodle Web Services. |
+| `course_bot/moodle_parser.py` | Tải/parse `.ics`, tách tên môn, tính học kỳ. |
+| `course_bot/moodle_deadline_crawler.py` | Thu thập deadline từ Moodle API và auto-complete bài đã nộp. |
+| `course_bot/announcement_tracker.py` | Phát hiện tài liệu/module và bài đăng diễn đàn mới. |
+| `course_bot/event_tracker.py` | Kiểm tra react `✅` để đánh dấu hoàn thành. |
+| `course_bot/discord_api.py` | Gọi Discord REST API (kênh, tin nhắn, reaction, Scheduled Events). |
+| `course_bot/interactions.py` | Xác thực chữ ký Ed25519 và xử lý Slash Commands. |
+| `course_bot/external_api.py` | Endpoint thêm deadline cho bên thứ 3 (xác thực `X-API-Key`). |
+| `course_bot/notion_sync.py`, `course_bot/google_calendar_sync.py` | Đồng bộ Notion và Google Calendar. |
 | `api/index.py` | Router hợp nhất cho Vercel (`/api/*`). `api/interactions.py`, `api/add_deadline.py` là các entry riêng cũ. |
 | `frontend/` | Web Dashboard (Vite + React + TS + Tailwind). |
 | `migrations/` | SQL tạo và nâng cấp schema (chạy theo thứ tự số). |

@@ -2,7 +2,7 @@
 Kiểm tra .vercelignore không loại bỏ module mà Serverless Function cần.
 
 Duyệt AST (kể cả import lười bên trong hàm) bắt đầu từ mọi file trong api/,
-đi theo các import `src.*` một cách bắc cầu, rồi đối chiếu với .vercelignore.
+đi theo các import `course_bot.*` một cách bắc cầu, rồi đối chiếu với .vercelignore.
 Nếu một file bị ignore nhưng vẫn được import, route tương ứng sẽ lỗi
 ModuleNotFoundError trên Vercel dù chạy local vẫn bình thường.
 """
@@ -13,7 +13,7 @@ import os
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PACKAGE = "src"
+PACKAGE = "course_bot"
 
 
 def _load_ignore_patterns():
@@ -62,7 +62,7 @@ def _local_imports(rel_path):
         if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             if node.module == PACKAGE or node.module.startswith(f"{PACKAGE}."):
                 modules.add(node.module)
-                # `from src import x` có thể là submodule
+                # `from course_bot import x` có thể là submodule
                 for alias in node.names:
                     modules.add(f"{node.module}.{alias.name}")
         elif isinstance(node, ast.Import):
@@ -103,10 +103,10 @@ def test_vercel_bundle_contains_all_imports(entry):
 
 @pytest.mark.parametrize("path, expected", [
     ("main.py", True),
-    ("src/app.py", True),
+    ("course_bot/app.py", True),
     ("docs/x.md", True),
     ("service_account.json", True),
-    ("src/database.py", False),
+    ("course_bot/database.py", False),
     ("api/index.py", False),
 ])
 def test_ignore_matcher(path, expected):

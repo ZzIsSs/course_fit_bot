@@ -1,13 +1,15 @@
 import os
 import logging
-from datetime import timezone, timedelta
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from course_bot.core.logging_setup import configure_logging
+
+# Giữ hành vi cũ: cấu hình logging ngay khi import config.
+# Phase 6/7 sẽ chuyển lời gọi này sang cli.py / web/router.py.
+configure_logging()
 
 # ==================== HẰNG SỐ ====================
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
-LOCAL_TZ = timezone(timedelta(hours=7))
 
 # ==================== BIẾN MÔI TRƯỜNG ====================
 

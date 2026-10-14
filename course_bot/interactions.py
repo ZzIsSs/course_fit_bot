@@ -9,13 +9,13 @@ from datetime import datetime, timezone
 from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignatureError
 
-from src.database import get_db
-from src.db_queries import (
+from course_bot.database import get_db
+from course_bot.db_queries import (
     get_or_create_course, insert_deadline_manual, get_course_name_by_chat_id,
     get_deadlines_for_course_or_all
 )
-from src.utils import ensure_tz, parse_due_time
-from src.config import LOCAL_TZ
+from course_bot.core.time_utils import ensure_tz, parse_due_time
+from course_bot.core.time_utils import LOCAL_TZ
 
 import re
 import logging
