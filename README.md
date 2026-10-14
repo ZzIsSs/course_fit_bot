@@ -16,7 +16,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
                         │                              │ assignments, quizzes, calendar,
                         ▼                              ▼ modules, forums, submission status
    GitHub Actions / Termux cron ──►  main.py  ──►  course_bot/app.py
-                                                   │   ├─ moodle_parser / moodle_deadline_crawler
+                                                   │   ├─ ics_feed / moodle_deadline_crawler
                                                    │   ├─ announcement_tracker
                                                    │   └─ event_tracker (react ✅ → hoàn thành)
                                                    ▼
@@ -61,7 +61,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `course_bot/core/` | `config.py` (đọc biến môi trường, hỗ trợ `.env`), `time_utils.py` (`LOCAL_TZ` = UTC+7, parse hạn chót), `logging_setup.py`. |
 | `course_bot/database.py`, `course_bot/db_queries.py` | Kết nối PostgreSQL và toàn bộ câu truy vấn. |
 | `course_bot/integrations/` | Client mỏng cho dịch vụ ngoài: `moodle/webservice.py` (Moodle Web Services), `discord/rest.py` (Discord REST: kênh, tin nhắn, reaction, Scheduled Events), `discord/signature.py` (xác thực Ed25519), `notion/client.py`, `google_calendar/client.py`. |
-| `course_bot/moodle_parser.py` | Tải/parse `.ics`, tách tên môn, tính học kỳ. |
+| `course_bot/domain/` | Logic thuần, không I/O: `course_naming.py` (tách mã/tên môn, tên kênh), `semester.py` (tính học kỳ). Việc tải và parse `.ics` nằm ở `integrations/moodle/ics_feed.py`. |
 | `course_bot/moodle_deadline_crawler.py` | Thu thập deadline từ Moodle API và auto-complete bài đã nộp. |
 | `course_bot/announcement_tracker.py` | Phát hiện tài liệu/module và bài đăng diễn đàn mới. |
 | `course_bot/event_tracker.py` | Kiểm tra react `✅` để đánh dấu hoàn thành. |

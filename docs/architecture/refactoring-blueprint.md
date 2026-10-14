@@ -269,12 +269,15 @@ Ask these questions in order and stop at the first "yes":
        jobs/                   web/routes/
          └──────────┬───────────────┘
                  services/
-           ┌────────┼─────────┐
-   db/repositories  integrations/   domain/
-           └────────┼─────────┘
+           ┌────────┴─────────┐
+   db/repositories      integrations/
+           └────────┬─────────┘
+                 domain/            (pure: no I/O)
+                    │
                   core/
 ```
 
+- **Amended 2026-10-15 (Phase 4):** `domain/` sits *below* `db/` and `integrations/`, not beside them. `integrations/moodle/ics_feed.py` needs `domain.course_naming.extract_subject`, and `domain/` is pure, so this direction can't create an import cycle. `domain/` must never import `db/`, `integrations/`, `services/`, `jobs/` or `web/`.
 - Arrows point downward only. A module may import from any layer **below** it, never from a layer beside or above it. The exceptions are `jobs/` ↔ `jobs/` and `routes/` ↔ `routes/`, which are allowed only through `services/`.
 - Optional enforcement: add [`import-linter`](https://pypi.org/project/import-linter/) with a `layers` contract to `pyproject.toml` and run it in CI.
 

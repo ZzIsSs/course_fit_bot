@@ -5,7 +5,7 @@ from datetime import datetime
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from course_bot.domain.course_naming import get_current_semester, parse_moodle_semester_code, extract_semester_index
+from course_bot.domain.semester import get_current_semester, parse_moodle_semester_code, extract_semester_index
 
 
 def test_case_1():
