@@ -213,5 +213,18 @@ GOOGLE_SERVICE_ACCOUNT_JSON={...}       # Toàn bộ nội dung file JSON Servic
 
 ---
 
+## 🗺️ 5. BẢNG VAI TRÒ CÁC MODULE CỐT LÕI
+
+| Module / Thư mục | Trách nhiệm chính |
+| :--- | :--- |
+| [`src/app.py`](../../src/app.py) | Điều phối chu trình quét deadline, chuỗi nhắc 3 ngày / 1 ngày, gửi summary & progress report. |
+| [`src/moodle_deadline_crawler.py`](../../src/moodle_deadline_crawler.py) | Cào trực tiếp bài tập (`mod_assign`) và quiz (`mod_quiz`) từ Moodle API; tự động đánh dấu hoàn thành khi sinh viên nộp bài. |
+| [`src/announcement_tracker.py`](../../src/announcement_tracker.py) | Theo dõi tài liệu upload mới (slide, PDF) và bài viết diễn đàn. |
+| [`src/discord_api.py`](../../src/discord_api.py) | Tạo kênh, phân loại category theo học kỳ, gửi tin nhắn, tạo Scheduled Event. |
+| [`api/index.py`](../../api/index.py) | REST API phục vụ Web Dashboard hoạt động trên Vercel. |
+| [`frontend/`](../../frontend/) | Giao diện Web SPA quản trị bài tập (hỗ trợ kéo thả Kanban, lọc môn học). |
+
+---
+
 > 💡 **Ghi chú dành riêng cho Nguyên:**  
 > Hệ thống hiện tại hoàn toàn tự động 24/7 nhờ **GitHub Actions** (chạy ngầm mỗi 30 phút) và **Vercel** (tiếp nhận lệnh Discord tức thì). Bạn không cần phải mở máy tính hay cắm sạc laptop để bot chạy!
