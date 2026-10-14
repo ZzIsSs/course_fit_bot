@@ -7,12 +7,10 @@ di chuyển file mà quên sửa import sẽ fail ngay tại đây thay vì lúc
 import importlib
 import os
 import pkgutil
-import sys
 
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
 
 # Đổi tên package ở đây khi chuyển src/ -> course_bot/
 PACKAGE = "src"

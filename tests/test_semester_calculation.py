@@ -1,12 +1,9 @@
 ﻿# -*- coding: utf-8 -*-
 import sys
-import os
 from datetime import datetime
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.moodle_parser import get_current_semester, parse_moodle_semester_code, extract_semester_index
 

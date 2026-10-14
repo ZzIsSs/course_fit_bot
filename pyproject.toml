@@ -2,11 +2,27 @@
 name = "course-fit-bot"
 version = "1.0.0"
 requires-python = ">=3.10"
+# Giữ đồng bộ 1:1 với requirements.txt (Vercel + GitHub Actions cài từ file đó)
 dependencies = [
     "requests",
     "psycopg2-binary",
     "pynacl",
+    "python-dotenv",
+    "google-auth>=2.0.0",
+    "google-api-python-client>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
 ]
 
 [tool.vercel]
 entrypoint = "api.index:handler"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "integration: cần PostgreSQL thật/tạm (chạy riêng bằng -m integration)",
+]

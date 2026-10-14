@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 """Unit tests cho tính năng Message Deduplication & Cleanup."""
-import sys
-import os
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.discord_api import (
     filter_duplicate_bot_messages,
