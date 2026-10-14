@@ -18,10 +18,7 @@ from course_bot.integrations.discord.rest import (
     send_message, add_reaction, create_scheduled_event,
     resolve_category, deduplicate_channel_messages
 )
-from course_bot.moodle_parser import (
-    fetch_and_parse_events, slugify_channel_name,
-    extract_display_name, extract_subject, extract_semester_index
-)
+from course_bot.domain.course_naming import slugify_channel_name, extract_display_name, extract_subject, extract_semester_index, fetch_and_parse_events
 from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
 from course_bot.event_tracker import check_completions
 from course_bot.announcement_tracker import check_moodle_updates

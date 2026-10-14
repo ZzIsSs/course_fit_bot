@@ -80,7 +80,7 @@ class handler(BaseHTTPRequestHandler):
             try:
                 with get_db(DATABASE_URL) as conn:
                     stats = get_dashboard_stats(conn)
-                from course_bot.moodle_parser import get_current_semester
+                from course_bot.domain.course_naming import get_current_semester
                 stats["semester"] = get_current_semester()
                 self._send_json(200, {"ok": True, "data": stats})
             except Exception as e:

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from course_bot.core.config import load_env
 from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
-from course_bot.moodle_parser import extract_subject, extract_display_name, slugify_channel_name
+from course_bot.domain.course_naming import extract_subject, extract_display_name, slugify_channel_name
 from course_bot.integrations.discord.rest import get_guild_channels, rename_channel
 
 # Tắt log quá dài, chỉ giữ lại INFO

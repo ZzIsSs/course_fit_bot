@@ -19,7 +19,7 @@ from course_bot.integrations.moodle.webservice import (
     get_assignments, get_quizzes,
     get_calendar_action_events, get_submission_status
 )
-from course_bot.moodle_parser import extract_subject, extract_display_name
+from course_bot.domain.course_naming import extract_subject, extract_display_name
 from course_bot.db_queries import (
     get_or_create_course, upsert_deadline_from_api,
     get_api_deadlines_for_auto_complete, mark_deadline_completed
