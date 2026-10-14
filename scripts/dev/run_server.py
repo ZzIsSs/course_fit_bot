@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Thêm root vào sys.path
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT_DIR)
 
 from api.index import handler as ApiHandler

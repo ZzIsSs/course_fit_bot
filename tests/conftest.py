@@ -1,15 +1,13 @@
 """
 Cấu hình chung cho pytest.
 
-1. Biến môi trường giả được gán ĐÈ ngay khi conftest load, trước khi bất kỳ
-   module nào trong src/ được import (src/interactions.py đọc
-   DISCORD_PUBLIC_KEY lúc import). load_dotenv() mặc định không ghi đè biến
-   đã tồn tại, nên test không bao giờ nạp được DB/token thật từ .env.
-   Biến của tích hợp tuỳ chọn (Notion, Google) gán chuỗi rỗng để luôn tắt.
+Biến môi trường giả được gán ĐÈ ngay khi conftest load, trước khi bất kỳ
+module nào trong src/ được import (src/interactions.py đọc
+DISCORD_PUBLIC_KEY lúc import). load_dotenv() mặc định không ghi đè biến
+đã tồn tại, nên test không bao giờ nạp được DB/token thật từ .env.
+Biến của tích hợp tuỳ chọn (Notion, Google) gán chuỗi rỗng để luôn tắt.
 
-2. collect_ignore: các script debug chạy với token thật hoặc gọi input().
-   Phase 2 của docs/refactoring-blueprint.md sẽ chuyển chúng sang
-   scripts/debug/ (hoặc xoá bản nháp) và gỡ danh sách này.
+Script debug cần token thật nằm ở scripts/debug/, ngoài testpaths.
 """
 import os
 
@@ -30,13 +28,3 @@ FAKE_ENV = {
     "GOOGLE_CALENDAR_ID": "",
 }
 os.environ.update(FAKE_ENV)
-
-# TODO(Phase 2): gỡ sau khi chuyển các script này sang scripts/debug/
-collect_ignore = [
-    "test_bot.py",        # tạo kênh / gửi tin nhắn Discord thật
-    "test_moodle.py",     # gọi Moodle thật, có input()
-    "test_firewall.py",   # input() token Moodle
-    "test_extract.py",    # script nháp
-    "test_extract2.py",   # script nháp
-    "test_extract3.py",   # script nháp
-]

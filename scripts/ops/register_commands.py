@@ -1,13 +1,13 @@
 """Đăng ký Slash Commands lên Discord.
 
-Chạy 1 lần sau khi deploy: python scripts/register_commands.py
+Chạy 1 lần sau khi deploy: python scripts/ops/register_commands.py
 
 ⚠️ Discord PUT ghi đè TOÀN BỘ danh sách lệnh — phải khai báo đầy đủ
 tất cả lệnh trong COMMANDS, thiếu cái nào sẽ bị xoá mất cái đó.
 """
 import os, sys, requests
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.config import load_env
 

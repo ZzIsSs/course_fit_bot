@@ -202,13 +202,13 @@ crond
 
 ## 6. CHẶNG 5: TRỌN BỘ 10 NÚT BẤM WIDGET 1 CHẠM & SCRIPT CÀI ĐẶT 1 LỆNH
 
-Nhằm giúp Nguyên không phải tự tay copy tạo từng file script phức tạp, dự án đã tích hợp sẵn script **`scripts/setup_termux.sh`**.
+Nhằm giúp Nguyên không phải tự tay copy tạo từng file script phức tạp, dự án đã tích hợp sẵn script **`scripts/termux/setup_termux.sh`**.
 
 ### 6.1. Thiết lập tự động chỉ với 1 dòng lệnh duy nhất!
 Tại Termux, Nguyên chỉ cần chạy:
 ```bash
 cd ~/course_fit_bot
-bash scripts/setup_termux.sh
+bash scripts/termux/setup_termux.sh
 ```
 *Script sẽ tự động tạo thư mục, cấu hình quyền, sinh ra kịch bản `~/bot-bin/run.sh` tối ưu và cài đặt trọn bộ 10 phím bấm Widget!*
 
@@ -253,7 +253,7 @@ Khi Nguyên code tính năng mới hoặc chỉnh sửa mã nguồn trên máy t
   ```bash
   cd ~/course_fit_bot
   git pull origin main
-  bash scripts/setup_termux.sh
+  bash scripts/termux/setup_termux.sh
   ```
 
 > 🔒 **Lưu ý an toàn:**  
@@ -348,7 +348,7 @@ echo "=========================================================="
 | :--- | :--- |
 | **Vào thư mục bot** | `cd ~/course_fit_bot` |
 | **Kích hoạt môi trường ảo** | `source venv/bin/activate` |
-| **Cài đặt / Tái tạo toàn bộ Widget tự động** | `bash scripts/setup_termux.sh` |
+| **Cài đặt / Tái tạo toàn bộ Widget tự động** | `bash scripts/termux/setup_termux.sh` |
 | **Cập nhật code từ GitHub** | `git pull origin main` |
 | **Chạy cào Moodle REST API & Auto-complete** | `python main.py --crawl-deadlines` |
 | **Quét toàn diện & gửi thông báo** | `~/bot-bin/run.sh` |

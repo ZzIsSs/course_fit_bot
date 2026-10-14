@@ -164,7 +164,7 @@ def run_main_bot():
                         category_id = resolve_category(bot_token, guild_id, category_map, f"kì {ky}")
                     else:
                         # Không nhận diện được tự động → dùng category đã gán tay
-                        # qua scripts/set_category.py (nếu có)
+                        # qua scripts/ops/set_category.py (nếu có)
                         category_id = get_course_discord_category(conn, event['subject'])
 
                     new_channel = create_channel(bot_token, guild_id, chan_name, parent_id=category_id)

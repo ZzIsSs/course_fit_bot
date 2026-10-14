@@ -1,7 +1,7 @@
 """
 Smoke test: mọi module trong package và các entry point đều import được.
 
-Lưới an toàn cho đợt refactor cấu trúc thư mục (docs/refactoring-blueprint.md):
+Lưới an toàn cho đợt refactor cấu trúc thư mục (docs/architecture/refactoring-blueprint.md):
 di chuyển file mà quên sửa import sẽ fail ngay tại đây thay vì lúc cron chạy.
 """
 import importlib

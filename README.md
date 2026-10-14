@@ -76,8 +76,8 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `tests/` | Unit test (pytest) và các script debug thủ công. |
 | `.github/workflows/` | `notify.yml` (mỗi 30 phút) và `daily_summary.yml` (báo cáo sáng). |
 | `docs/` | Tài liệu kỹ thuật, lộ trình tính năng, đặc tả UI. |
-| `UI 13TPro/` | Bản thiết kế giao diện mobile (tối ưu cho Xiaomi 13T Pro). |
-| `TERMUX_WORKSTATION.md` | Hướng dẫn biến điện thoại Android thành máy trạm chạy bot. |
+| `docs/design/mobile-13t-pro/` | Bản thiết kế giao diện mobile (tối ưu cho Xiaomi 13T Pro). |
+| `docs/guides/termux-workstation.md` | Hướng dẫn biến điện thoại Android thành máy trạm chạy bot. |
 
 ## Biến môi trường
 
@@ -89,10 +89,10 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `DATABASE_URL` | ✅ | Connection string Supabase PostgreSQL (cả bot lẫn Vercel). |
 | `MOODLE_TOKEN` | Khuyên dùng | Moodle REST API: crawler deadline, auto-complete, tài liệu, diễn đàn. |
 | `DISCORD_PUBLIC_KEY` | Slash Commands | Xác thực request Discord gửi tới Vercel. |
-| `DISCORD_APPLICATION_ID` | Slash Commands | Dùng bởi `scripts/register_commands.py`. |
+| `DISCORD_APPLICATION_ID` | Slash Commands | Dùng bởi `scripts/ops/register_commands.py`. |
 | `EXTERNAL_API_KEY` | Tuỳ chọn | Bảo vệ endpoint `POST /api/add_deadline`. |
-| `NOTION_API_TOKEN`, `NOTION_DATABASE_ID` | Tuỳ chọn | Đồng bộ Notion ([hướng dẫn](docs/notion-todo-list-integration.md)). |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` hoặc `GOOGLE_SERVICE_ACCOUNT_FILE`, `GOOGLE_CALENDAR_ID` | Tuỳ chọn | Đồng bộ Google Calendar ([hướng dẫn](docs/google-calendar-integration.md)). |
+| `NOTION_API_TOKEN`, `NOTION_DATABASE_ID` | Tuỳ chọn | Đồng bộ Notion ([hướng dẫn](docs/guides/notion-todo-list-integration.md)). |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` hoặc `GOOGLE_SERVICE_ACCOUNT_FILE`, `GOOGLE_CALENDAR_ID` | Tuỳ chọn | Đồng bộ Google Calendar ([hướng dẫn](docs/guides/google-calendar-integration.md)). |
 
 > ⚠️ Không commit `.env` hay `service_account*.json` (đã có trong `.gitignore`). Repo GitHub nên để **Private**.
 
@@ -124,11 +124,11 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 3. Trong Discord Developer Portal, đặt **Interactions Endpoint URL** = `https://<domain>.vercel.app/api/interactions`.
 4. Đăng ký lệnh (chạy một lần, hoặc mỗi khi sửa danh sách lệnh):
    ```bash
-   python scripts/register_commands.py
+   python scripts/ops/register_commands.py
    ```
 
 ### 5. (Tuỳ chọn) Máy trạm Termux
-Chạy bot bằng cron trên điện thoại Android, kèm 10 phím Widget 1 chạm. Xem chi tiết tại [TERMUX_WORKSTATION.md](TERMUX_WORKSTATION.md) và script `scripts/setup_termux.sh`.
+Chạy bot bằng cron trên điện thoại Android, kèm 10 phím Widget 1 chạm. Xem chi tiết tại [docs/guides/termux-workstation.md](docs/guides/termux-workstation.md) và script `scripts/termux/setup_termux.sh`.
 
 ## Phát triển cục bộ
 
@@ -152,7 +152,7 @@ python main.py --dedup [--channel <tên>] [--limit <N>] [--dry-run]   # Dọn ti
 
 **Chạy API + Web Dashboard:**
 ```bash
-python scripts/run_server.py      # API + frontend đã build tại http://localhost:8000
+python scripts/dev/run_server.py      # API + frontend đã build tại http://localhost:8000
 
 cd frontend
 npm install
@@ -164,7 +164,7 @@ npm run dev                       # Vite dev server tại http://localhost:5173 
 pip install pytest
 python -m pytest tests
 ```
-> Một số file trong `tests/` (vd: `test_bot.py`, `test_moodle.py`) là script debug cần token thật, chạy trực tiếp bằng `python tests/<file>.py`.
+> Các script debug cần token thật (gọi Discord/Moodle thật) nằm ở `scripts/debug/`, chạy trực tiếp bằng `python scripts/debug/<file>.py`. Pytest không thu thập chúng.
 
 ## REST API (Vercel)
 
@@ -193,8 +193,9 @@ python -m pytest tests
 | `error_logs` | Nhật ký lỗi theo nguồn và mức độ. |
 
 ## Tài liệu thêm
-- [CAU_TRUC_DU_AN.md](CAU_TRUC_DU_AN.md): cấu trúc dự án chi tiết.
-- [ROADMAP.md](ROADMAP.md): hướng phát triển.
-- [docs/technical-specification.md](docs/technical-specification.md): đặc tả kỹ thuật.
-- [docs/frontend-architecture-and-workflow.md](docs/frontend-architecture-and-workflow.md): kiến trúc Web Dashboard.
+- [docs/architecture/cau-truc-du-an.md](docs/architecture/cau-truc-du-an.md): cấu trúc dự án chi tiết.
+- [docs/planning/roadmap.md](docs/planning/roadmap.md): hướng phát triển.
+- [docs/architecture/technical-specification.md](docs/architecture/technical-specification.md): đặc tả kỹ thuật.
+- [docs/architecture/frontend-architecture-and-workflow.md](docs/architecture/frontend-architecture-and-workflow.md): kiến trúc Web Dashboard.
+- [docs/architecture/refactoring-blueprint.md](docs/architecture/refactoring-blueprint.md): kế hoạch tái cấu trúc thư mục.
 - [docs/context-pack/](docs/context-pack/): bộ tài liệu tổng quan cho AI/người mới.

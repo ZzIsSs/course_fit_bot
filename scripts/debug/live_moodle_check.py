@@ -8,7 +8,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='repla
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 
 # Thêm project root vào path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.moodle_api import (
     get_site_info, get_enrolled_courses, get_course_contents,

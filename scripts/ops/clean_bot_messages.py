@@ -2,20 +2,20 @@
 
 Sử dụng:
     # Quét thử nghiệm trên tất cả các kênh (không xóa thật)
-    python scripts/clean_bot_messages.py --dry-run
+    python scripts/ops/clean_bot_messages.py --dry-run
 
     # Thực hiện dọn dẹp trên tất cả các kênh text (quét 100 tin gần nhất mỗi kênh)
-    python scripts/clean_bot_messages.py
+    python scripts/ops/clean_bot_messages.py
 
     # Quét 200 tin gần nhất trên một kênh cụ thể
-    python scripts/clean_bot_messages.py --channel ctdl-gt --limit 200
+    python scripts/ops/clean_bot_messages.py --channel ctdl-gt --limit 200
 """
 import sys
 import os
 import argparse
 
 # Đảm bảo đường dẫn root project có trong sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Đảm bảo encoding utf-8 trên console Windows
 if hasattr(sys.stdout, "reconfigure"):

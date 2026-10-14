@@ -76,8 +76,8 @@ Kênh giao tiếp               Phương thức xác thực                    T
   except ImportError:
       pass  # Bỏ qua an toàn trên GitHub Actions / Vercel
   ```
-* [`scripts/notion_helper.py:16`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/notion_helper.py#L16), [`179`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/notion_helper.py#L179): Sử dụng trong script tiện ích console để bỏ qua lỗi import và lỗi prompt tương tác.
-* [`scripts/run_server.py:11`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/run_server.py#L11): Bỏ qua lỗi import dotenv khi chạy dev server cục bộ.
+* [`scripts/dev/notion_helper.py:16`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/dev/notion_helper.py#L16), [`179`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/dev/notion_helper.py#L179): Sử dụng trong script tiện ích console để bỏ qua lỗi import và lỗi prompt tương tác.
+* [`scripts/dev/run_server.py:11`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/scripts/dev/run_server.py#L11): Bỏ qua lỗi import dotenv khi chạy dev server cục bộ.
 
 ### 3.3 Kiểm tra các khối bắt Exception rỗng / Nuốt lỗi
 1. [`frontend/src/api/client.ts:19`](file:///e:/coder/OnlyC%28ode%29/Notification%20Project/frontend/src/api/client.ts#L19):

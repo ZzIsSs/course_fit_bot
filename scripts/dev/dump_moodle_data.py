@@ -3,7 +3,7 @@ import os
 import json
 
 # Đảm bảo có thể import được thư mục src
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.moodle_api import get_site_info, get_enrolled_courses, get_course_contents
 

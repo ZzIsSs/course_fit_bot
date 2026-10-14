@@ -123,8 +123,8 @@ cd "$HOME/course_fit_bot" || exit 1
 git fetch origin main
 if git pull origin main; then
     termux-toast "✅ Đã cập nhật code mới nhất thành công!" 2>/dev/null || true
-    if [ -f "scripts/setup_termux.sh" ]; then
-        bash scripts/setup_termux.sh >/dev/null 2>&1 || true
+    if [ -f "scripts/termux/setup_termux.sh" ]; then
+        bash scripts/termux/setup_termux.sh >/dev/null 2>&1 || true
     fi
 else
     termux-toast "❌ Cập nhật code thất bại! Vui lòng mở Termux kiểm tra git status." 2>/dev/null || true

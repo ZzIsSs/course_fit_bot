@@ -695,7 +695,7 @@ npm run dev
 ### Bước 5: Chạy Backend Serverless API Cục bộ
 Tại thư mục gốc dự án:
 ```bash
-python scripts/run_server.py
+python scripts/dev/run_server.py
 # API server sẵn sàng tại: http://localhost:8000
 ```
 
