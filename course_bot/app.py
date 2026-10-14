@@ -13,7 +13,7 @@ from course_bot.db_queries import (
     get_course_discord_category, set_course_discord_category,
     get_pending_manual_deadlines
 )
-from course_bot.discord_api import (
+from course_bot.integrations.discord.rest import (
     get_bot_user, get_guild_channels, create_channel, rename_channel,
     send_message, add_reaction, create_scheduled_event,
     resolve_category, deduplicate_channel_messages
@@ -22,12 +22,12 @@ from course_bot.moodle_parser import (
     fetch_and_parse_events, slugify_channel_name,
     extract_display_name, extract_subject, extract_semester_index
 )
-from course_bot.moodle_api import get_site_info, get_enrolled_courses
+from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
 from course_bot.event_tracker import check_completions
 from course_bot.announcement_tracker import check_moodle_updates
 from course_bot.moodle_deadline_crawler import crawl_moodle_deadlines
-from course_bot.notion_sync import NotionSync
-from course_bot.google_calendar_sync import GoogleCalendarSync
+from course_bot.integrations.notion.client import NotionSync
+from course_bot.integrations.google_calendar.client import GoogleCalendarSync
 
 
 # ==================== TIỆN ÍCH ====================

@@ -10,7 +10,7 @@ sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 # Thêm project root vào path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from course_bot.moodle_api import (
+from course_bot.integrations.moodle.webservice import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )

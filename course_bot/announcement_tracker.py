@@ -11,12 +11,12 @@ Và gửi thông báo vào kênh Discord tương ứng cho từng môn học.
 import logging
 import re
 
-from course_bot.moodle_api import (
+from course_bot.integrations.moodle.webservice import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )
 from course_bot.moodle_parser import extract_subject, extract_display_name, slugify_channel_name, extract_semester_index
-from course_bot.discord_api import get_guild_channels, create_channel, send_message, rename_channel, resolve_category
+from course_bot.integrations.discord.rest import get_guild_channels, create_channel, send_message, rename_channel, resolve_category
 from course_bot.db_queries import (
     get_or_create_course, get_known_modules_for_course,
     upsert_module, has_modules, get_known_discussion_ids,

@@ -1,6 +1,6 @@
 import logging
 
-from course_bot.discord_api import get_reaction_users, update_scheduled_event
+from course_bot.integrations.discord.rest import get_reaction_users, update_scheduled_event
 from course_bot.db_queries import get_tracked_deadlines, mark_deadline_completed
 
 

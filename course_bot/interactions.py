@@ -1,13 +1,10 @@
 """Xử lý Discord Interactions (Slash Commands).
 
-Module này xác thực chữ ký từ Discord và dispatch lệnh tương ứng.
+Module này dispatch lệnh tương ứng. Xác thực chữ ký Discord nằm ở
+course_bot/integrations/discord/signature.py.
 Được gọi từ api/interactions.py (Vercel entry point).
 """
-import os
 from datetime import datetime, timezone
-
-from nacl.signing import VerifyKey
-from nacl.exceptions import BadSignatureError
 
 from course_bot.database import get_db
 from course_bot.db_queries import (
@@ -20,8 +17,6 @@ from course_bot.core.time_utils import LOCAL_TZ
 import re
 import logging
 
-DISCORD_PUBLIC_KEY = os.environ.get('DISCORD_PUBLIC_KEY')
-
 
 def sanitize_discord_text(text):
     """Khử nguy cơ Mention Injection (@everyone, @here, role ping) và ký tự rác."""
@@ -32,17 +27,6 @@ def sanitize_discord_text(text):
     text = text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
     text = re.sub(r'<@&(\d+)>', lambda m: '@\u200b&role', text)
     return " ".join(text.strip().split())
-
-
-def verify_signature(signature, timestamp, body):
-    if not DISCORD_PUBLIC_KEY:
-        return False
-    try:
-        VerifyKey(bytes.fromhex(DISCORD_PUBLIC_KEY)).verify(
-            f'{timestamp}{body}'.encode(), bytes.fromhex(signature))
-        return True
-    except (BadSignatureError, Exception):
-        return False
 
 
 def handle_interaction(interaction, database_url):

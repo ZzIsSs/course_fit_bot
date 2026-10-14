@@ -3,7 +3,7 @@
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from course_bot.discord_api import (
+from course_bot.integrations.discord.rest import (
     filter_duplicate_bot_messages,
     is_message_under_14_days,
     get_channel_messages,
@@ -133,7 +133,7 @@ def test_get_channel_messages_pagination():
             resp.json.return_value = batch1
         return resp
 
-    with patch("course_bot.discord_api._request_with_retry", side_effect=mock_request):
+    with patch("course_bot.integrations.discord.rest._request_with_retry", side_effect=mock_request):
         # Yêu cầu lấy 150 tin
         result = get_channel_messages(token, channel_id, limit=150)
         assert len(result) == 150, f"Expected 150 messages, got {len(result)}"
@@ -157,11 +157,11 @@ def test_deduplicate_fallback_on_403():
     ]
 
     # Mock get_channel_messages trả về 3 tin (1 kept, 2 duplicates)
-    with patch("course_bot.discord_api.get_channel_messages", return_value=messages):
+    with patch("course_bot.integrations.discord.rest.get_channel_messages", return_value=messages):
         # Mock bulk_delete trả về False, 403 (PERMISSION_DENIED)
-        with patch("course_bot.discord_api.bulk_delete_messages", return_value=(False, 403, "PERMISSION_DENIED")) as mock_bulk:
+        with patch("course_bot.integrations.discord.rest.bulk_delete_messages", return_value=(False, 403, "PERMISSION_DENIED")) as mock_bulk:
             # Mock delete_message trả về True
-            with patch("course_bot.discord_api.delete_message", return_value=True) as mock_single:
+            with patch("course_bot.integrations.discord.rest.delete_message", return_value=True) as mock_single:
                 stats = deduplicate_channel_messages(token, channel_id, bot_user_id=bot_id, scan_limit=10)
 
                 assert stats["duplicates_found"] == 2

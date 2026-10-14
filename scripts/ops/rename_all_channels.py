@@ -5,9 +5,9 @@ import logging
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from course_bot.core.config import load_env
-from course_bot.moodle_api import get_site_info, get_enrolled_courses
+from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
 from course_bot.moodle_parser import extract_subject, extract_display_name, slugify_channel_name
-from course_bot.discord_api import get_guild_channels, rename_channel
+from course_bot.integrations.discord.rest import get_guild_channels, rename_channel
 
 # Tắt log quá dài, chỉ giữ lại INFO
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')

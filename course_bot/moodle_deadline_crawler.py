@@ -14,7 +14,7 @@ Sử dụng MOODLE_TOKEN để gọi:
 import logging
 from datetime import datetime, timezone, timedelta
 
-from course_bot.moodle_api import (
+from course_bot.integrations.moodle.webservice import (
     get_site_info, get_enrolled_courses,
     get_assignments, get_quizzes,
     get_calendar_action_events, get_submission_status

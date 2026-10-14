@@ -5,7 +5,7 @@ import json
 # Đảm bảo có thể import được package course_bot
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from course_bot.moodle_api import get_site_info, get_enrolled_courses, get_course_contents
+from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses, get_course_contents
 
 def main():
     print("="*50)
