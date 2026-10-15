@@ -1,5 +1,6 @@
 # Exclude bot CLI runner & background logic from Vercel Serverless Functions
 main.py
+course_bot/cli.py
 course_bot/jobs/
 course_bot/integrations/google_calendar/client.py
 course_bot/integrations/notion/client.py
