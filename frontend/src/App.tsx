@@ -3,6 +3,7 @@ import { ActiveTab, ViewMode, FilterStatus, Deadline, Course, DashboardStats, An
 import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion } from './api/client';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { BottomNav } from './components/layout/BottomNav';
 import { ToastContainer } from './components/ui/Toast';
 import { HeroProgressBanner } from './features/dashboard/HeroProgressBanner';
 import { MetricCards } from './features/dashboard/MetricCards';
@@ -287,7 +288,7 @@ export const App: React.FC = () => {
         />
 
         {/* Page Body */}
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+        <main className="flex-1 p-4 sm:p-8 pb-28 lg:pb-8 max-w-7xl w-full mx-auto space-y-8">
           {fetchError && (
             <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200">
               <div className="flex items-center gap-2">
@@ -410,6 +411,14 @@ export const App: React.FC = () => {
         onClose={() => setIsAddModalOpen(false)}
         courses={courses}
         onSubmit={handleCreateDeadline}
+      />
+
+      {/* Mobile Bottom Navigation & Quick Action */}
+      <BottomNav
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onOpenAddModal={() => setIsAddModalOpen(true)}
+        urgentCount={stats.urgent_24h}
       />
     </div>
   );
