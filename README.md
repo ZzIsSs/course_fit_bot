@@ -155,13 +155,20 @@ Cần Python ≥ 3.10 và Node.js ≥ 18. Backend Python không cần build; fro
 .\scripts\dev\start.ps1 -Dev       # chế độ dev: backend ở cửa sổ mới + Vite tại http://localhost:5173 (sửa code thấy ngay)
 ```
 
-Làm tay từng bước (mọi hệ điều hành):
+Làm tay từng bước:
+```powershell
+# Windows PowerShell 5.1 (mặc định trên Windows) — không hỗ trợ `&&`
+pip install -r requirements.txt pytest
+npm --prefix frontend install
+npm --prefix frontend run build; if ($?) { python scripts/dev/run_server.py }   # http://localhost:8000
+```
 ```bash
+# Git Bash, macOS, Linux hoặc PowerShell 7+
 pip install -r requirements.txt pytest
 npm --prefix frontend install
 npm --prefix frontend run build && python scripts/dev/run_server.py   # http://localhost:8000
-# hoặc dev: chạy `python scripts/dev/run_server.py` ở một terminal, `npm --prefix frontend run dev` ở terminal khác
 ```
+Chế độ dev làm tay: chạy `python scripts/dev/run_server.py` ở một terminal và `npm --prefix frontend run dev` ở terminal khác, rồi mở http://localhost:5173.
 
 > ⚠️ `run_server.py` dùng `DATABASE_URL` trong `.env`. Xem dashboard thì an toàn, nhưng tick hoàn thành / thêm deadline sẽ **ghi thật** vào DB đó (và deadline mới sẽ được bot thông báo `@everyone` ở lần cron kế tiếp). Muốn thử an toàn, đặt `DATABASE_URL` của staging trước khi chạy: `$env:DATABASE_URL = "<url staging>"`.
 >
