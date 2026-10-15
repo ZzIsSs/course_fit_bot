@@ -5,14 +5,23 @@ from datetime import datetime, timezone, timedelta
 from course_bot.core.config import load_env
 from course_bot.core.time_utils import LOCAL_TZ
 from course_bot.db.connection import get_db
-from course_bot.db.repositories.deadlines import (
-    get_or_create_course, get_deadline_by_lms_id, insert_deadline,
-    update_deadline_notified, update_deadline_discord_info,
-    get_all_deadlines_with_course, insert_notification,
-    update_course_chat_id, get_all_courses, get_course_display_name,
-    get_course_discord_category, set_course_discord_category,
-    get_pending_manual_deadlines
+from course_bot.db.repositories.courses import (
+    get_or_create_course,
+    update_course_chat_id,
+    get_all_courses,
+    get_course_display_name,
+    get_course_discord_category,
+    set_course_discord_category,
 )
+from course_bot.db.repositories.deadlines import (
+    get_deadline_by_lms_id,
+    insert_deadline,
+    update_deadline_notified,
+    update_deadline_discord_info,
+    get_all_deadlines_with_course,
+    get_pending_manual_deadlines,
+)
+from course_bot.db.repositories.notifications import insert_notification
 from course_bot.integrations.discord.rest import (
     get_bot_user, get_guild_channels, create_channel, rename_channel,
     send_message, add_reaction, create_scheduled_event,

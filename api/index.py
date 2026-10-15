@@ -27,15 +27,17 @@ from course_bot.interactions import handle_interaction
 from course_bot.external_api import verify_api_key, handle_add_deadline
 from course_bot.core.time_utils import parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
-from course_bot.db.repositories.deadlines import (
+from course_bot.db.repositories.courses import (
     get_or_create_course,
+    get_courses_with_deadline_counts,
+)
+from course_bot.db.repositories.deadlines import (
     insert_deadline_manual,
     toggle_deadline_completed,
-    get_courses_with_deadline_counts,
     get_dashboard_stats,
     get_all_deadlines_with_course_details,
-    get_recent_announcements_with_course,
 )
+from course_bot.db.repositories.moodle_content import get_recent_announcements_with_course
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 

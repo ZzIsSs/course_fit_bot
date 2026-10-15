@@ -6,7 +6,8 @@ from unittest.mock import patch, MagicMock
 
 from course_bot.core.time_utils import parse_due_time, ensure_tz
 from course_bot.interactions import sanitize_discord_text, _public, _handle_add_deadline
-from course_bot.db.repositories.deadlines import insert_deadline_manual, get_or_create_course
+from course_bot.db.repositories.courses import get_or_create_course
+from course_bot.db.repositories.deadlines import insert_deadline_manual
 from course_bot.core.time_utils import LOCAL_TZ
 
 

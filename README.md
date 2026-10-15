@@ -59,7 +59,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `main.py` | CLI entry point cho các tác vụ định kỳ (chọn chế độ bằng tham số). |
 | `course_bot/app.py` | Điều phối các luồng chính: thông báo, báo cáo, sync kênh, Notion, GCal, dedup. |
 | `course_bot/core/` | `config.py` (đọc biến môi trường, hỗ trợ `.env`), `time_utils.py` (`LOCAL_TZ` = UTC+7, parse hạn chót), `logging_setup.py`. |
-| `course_bot/database.py`, `course_bot/db_queries.py` | Kết nối PostgreSQL và toàn bộ câu truy vấn. |
+| `course_bot/db/` | `connection.py` (kết nối PostgreSQL) và `repositories/` (SQL theo từng bảng: `courses.py`, `deadlines.py`, `moodle_content.py`, `notifications.py`). |
 | `course_bot/integrations/` | Client mỏng cho dịch vụ ngoài: `moodle/webservice.py` (Moodle Web Services), `discord/rest.py` (Discord REST: kênh, tin nhắn, reaction, Scheduled Events), `discord/signature.py` (xác thực Ed25519), `notion/client.py`, `google_calendar/client.py`. |
 | `course_bot/domain/` | Logic thuần, không I/O: `course_naming.py` (tách mã/tên môn, tên kênh), `semester.py` (tính học kỳ). Việc tải và parse `.ics` nằm ở `integrations/moodle/ics_feed.py`. |
 | `course_bot/moodle_deadline_crawler.py` | Thu thập deadline từ Moodle API và auto-complete bài đã nộp. |
