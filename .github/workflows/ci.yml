@@ -1,0 +1,58 @@
+name: CI
+
+# Kiểm tra code trên mọi push và pull request. KHÔNG dùng secret nào và KHÔNG
+# chạy bot: pytest dùng env giả (tests/conftest.py), `main.py --bogus` chỉ in usage.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'   # giống notify.yml
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Unit tests
+        run: python -m pytest -m "not integration"
+
+      - name: Vercel entrypoint imports
+        run: python -c "import api.index"
+
+      - name: CLI prints usage
+        run: python main.py --bogus
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build
+        run: npm run build
