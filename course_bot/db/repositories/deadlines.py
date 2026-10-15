@@ -21,12 +21,18 @@ def get_deadline_by_lms_id(conn, lms_deadlines_id):
 
 
 def get_tracked_deadlines(conn):
-    """Lấy các deadline chưa completed và đang theo dõi reaction (có message_id)."""
+    """Lấy các deadline chưa completed và đang theo dõi reaction (có message_id).
+
+    Bỏ qua deadline đã quá hạn hơn 3 ngày: mỗi deadline tốn 1 request Discord
+    (lấy reactions), nên nếu giữ mãi deadline cũ thì số request tăng dần và
+    dễ chạm rate limit.
+    """
     return fetch_all(conn,
         """SELECT d.*, c.course_name
            FROM deadlines d
            JOIN courses c ON d.courses_id = c.courses_id
-           WHERE d.completed = false AND d.discord_message_id IS NOT NULL""")
+           WHERE d.completed = false AND d.discord_message_id IS NOT NULL
+             AND d.due_time >= now() - interval '3 days'""")
 
 
 def get_all_deadlines_with_course(conn):
