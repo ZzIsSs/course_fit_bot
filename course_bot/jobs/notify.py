@@ -3,12 +3,7 @@ from datetime import datetime, timezone
 
 from course_bot.core.config import load_env
 from course_bot.db.connection import get_db
-from course_bot.db.repositories.courses import (
-    get_or_create_course,
-    get_course_display_name,
-    get_course_discord_category,
-    set_course_discord_category,
-)
+from course_bot.db.repositories.courses import get_or_create_course, get_course_display_name
 from course_bot.db.repositories.deadlines import (
     get_deadline_by_lms_id,
     insert_deadline,
@@ -20,17 +15,15 @@ from course_bot.db.repositories.notifications import insert_notification
 from course_bot.integrations.discord.rest import (
     get_bot_user,
     get_guild_channels,
-    create_channel,
     send_message,
     add_reaction,
     create_scheduled_event,
-    resolve_category,
 )
-from course_bot.domain.course_naming import slugify_channel_name
 from course_bot.domain.semester import extract_semester_index
 from course_bot.domain.reminders import decide_reminder, NEW, NOTIFIED_FIELDS
 from course_bot.domain.messages import build_event_url, build_deadline_message
 from course_bot.integrations.moodle.ics_feed import fetch_and_parse_events
+from course_bot.services.channel_resolver import resolve_course_channel
 from course_bot.jobs.completions import check_completions
 from course_bot.jobs.announcements import check_moodle_updates
 from course_bot.jobs.crawl_deadlines import crawl_moodle_deadlines
@@ -133,31 +126,13 @@ def run_main_bot():
             if msg_type:
                 # Lấy display_name từ DB (nếu đã có từ Moodle sync)
                 display_name = get_course_display_name(conn, event['subject'])
-                chan_name = slugify_channel_name(event['subject'], display_name)
-                old_chan_name = slugify_channel_name(event['subject'])
-
-                if chan_name in channel_map:
-                    target_chan_id = channel_map[chan_name]
-                elif old_chan_name in channel_map:
-                    # Fallback: kênh cũ (chỉ mã môn) vẫn tồn tại
-                    target_chan_id = channel_map[old_chan_name]
-                else:
-                    ky = extract_semester_index(event.get('category_raw', ''))
-                    if ky is not None:
-                        category_id = resolve_category(bot_token, guild_id, category_map, f"kì {ky}")
-                    else:
-                        # Không nhận diện được tự động → dùng category đã gán tay
-                        # qua scripts/ops/set_category.py (nếu có)
-                        category_id = get_course_discord_category(conn, event['subject'])
-
-                    new_channel = create_channel(bot_token, guild_id, chan_name, parent_id=category_id)
-                    if new_channel:
-                        channel_map[chan_name] = new_channel['id']
-                        target_chan_id = new_channel['id']
-                        if category_id:
-                            set_course_discord_category(conn, event['subject'], category_id)
-                    else:
-                        continue
+                target_chan_id, _ = resolve_course_channel(
+                    bot_token, guild_id, conn, channel_map, category_map,
+                    event['subject'], display_name,
+                    extract_semester_index(event.get('category_raw', '')),
+                )
+                if not target_chan_id:
+                    continue
 
                 # Deadline thủ công dùng source_url đã lưu, Moodle dùng link build từ uid
                 if eid.startswith('manual-'):

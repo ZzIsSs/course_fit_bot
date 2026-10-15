@@ -15,15 +15,10 @@ from course_bot.integrations.moodle.webservice import (
     get_site_info, get_enrolled_courses, get_course_contents,
     get_course_forums, get_forum_discussions
 )
-from course_bot.domain.course_naming import extract_subject, extract_display_name, slugify_channel_name
+from course_bot.domain.course_naming import extract_subject, extract_display_name
 from course_bot.domain.semester import extract_semester_index
-from course_bot.integrations.discord.rest import get_guild_channels, create_channel, send_message, rename_channel, resolve_category
-from course_bot.db.repositories.courses import (
-    get_or_create_course,
-    update_course_crawl_time,
-    get_course_discord_category,
-    set_course_discord_category,
-)
+from course_bot.integrations.discord.rest import get_guild_channels, send_message
+from course_bot.db.repositories.courses import get_or_create_course, update_course_crawl_time
 from course_bot.db.repositories.moodle_content import (
     get_known_modules_for_course,
     upsert_module,
@@ -31,6 +26,7 @@ from course_bot.db.repositories.moodle_content import (
     get_known_discussion_ids,
     insert_discussion,
 )
+from course_bot.services.channel_resolver import resolve_course_channel
 from course_bot.core.config import load_env
 from course_bot.db.connection import get_db
 
@@ -250,42 +246,6 @@ def check_moodle_updates(bot_token, guild_id, moodle_token, conn):
 
 # ==================== GỬI THÔNG BÁO ====================
 
-def _ensure_channel(bot_token, guild_id, channel_map, category_map, conn, subject_code, display_name=None, semester_index=None):
-    """Tìm hoặc tạo kênh Discord cho một môn học. Trả về channel_id hoặc None."""
-    chan_name = slugify_channel_name(subject_code, display_name)
-
-    # Thử tìm kênh với tên mới (viết-tắt-mã-môn)
-    if chan_name in channel_map:
-        return channel_map[chan_name]
-
-    # Fallback: thử tìm kênh cũ (chỉ mã môn)
-    old_chan_name = slugify_channel_name(subject_code)
-    if old_chan_name in channel_map:
-        old_id = channel_map[old_chan_name]
-        # Phát hiện tên cũ, tiến hành đổi tên sang format mới
-        if old_chan_name != chan_name:
-            rename_channel(bot_token, old_id, chan_name)
-            # Cập nhật lại cache (channel_map)
-            channel_map[chan_name] = old_id
-            del channel_map[old_chan_name]
-        return old_id
-
-    # Resolve category trước khi tạo kênh mới
-    if semester_index is not None:
-        category_id = resolve_category(bot_token, guild_id, category_map, f"kì {semester_index}")
-    else:
-        category_id = get_course_discord_category(conn, subject_code)
-
-    new_channel = create_channel(bot_token, guild_id, chan_name, parent_id=category_id)
-    if new_channel:
-        channel_map[chan_name] = new_channel['id']
-        if category_id:
-            set_course_discord_category(conn, subject_code, category_id)
-        return new_channel['id']
-
-    return None
-
-
 def _get_module_display(modname):
     """Lấy emoji và tên hiển thị cho loại module."""
     emoji, label = MODULE_TYPES.get(modname, ('📌', modname.capitalize() if modname else 'Khác'))
@@ -294,8 +254,8 @@ def _get_module_display(modname):
 
 def _send_module_notification(bot_token, guild_id, channel_map, category_map, conn, course_info, module, is_update):
     """Gửi thông báo về module mới hoặc đã cập nhật."""
-    channel_id = _ensure_channel(
-        bot_token, guild_id, channel_map, category_map, conn,
+    channel_id, _ = resolve_course_channel(
+        bot_token, guild_id, conn, channel_map, category_map,
         course_info['subject'], course_info.get('display_name'), course_info.get('semester_index')
     )
     if not channel_id:
@@ -336,8 +296,8 @@ def _send_module_notification(bot_token, guild_id, channel_map, category_map, co
 
 def _send_discussion_notification(bot_token, guild_id, channel_map, category_map, conn, course_info, disc):
     """Gửi thông báo về bài đăng mới trên diễn đàn."""
-    channel_id = _ensure_channel(
-        bot_token, guild_id, channel_map, category_map, conn,
+    channel_id, _ = resolve_course_channel(
+        bot_token, guild_id, conn, channel_map, category_map,
         course_info['subject'], course_info.get('display_name'), course_info.get('semester_index')
     )
     if not channel_id:

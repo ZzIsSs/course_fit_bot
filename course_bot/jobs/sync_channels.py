@@ -3,21 +3,12 @@ import logging
 
 from course_bot.core.config import load_env
 from course_bot.db.connection import get_db
-from course_bot.db.repositories.courses import (
-    get_or_create_course,
-    update_course_chat_id,
-    get_course_discord_category,
-    set_course_discord_category,
-)
-from course_bot.integrations.discord.rest import (
-    get_guild_channels,
-    create_channel,
-    rename_channel,
-    resolve_category,
-)
+from course_bot.db.repositories.courses import get_or_create_course, update_course_chat_id
+from course_bot.integrations.discord.rest import get_guild_channels
 from course_bot.domain.course_naming import slugify_channel_name, extract_display_name, extract_subject
 from course_bot.domain.semester import extract_semester_index
 from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
+from course_bot.services.channel_resolver import resolve_course_channel, EXISTED, RENAMED, CREATED
 
 
 # ==================== ĐỒNG BỘ KÊNH DISCORD ====================
@@ -91,49 +82,20 @@ def sync_channels():
                 conn, subject_code, lms_courses_id=course_id, display_name=display_name
             )
 
-            # Tên kênh mới theo format viết-tắt-mã-môn
-            new_chan_name = slugify_channel_name(subject_code, display_name)
-            # Tên kênh cũ (chỉ mã môn, không có viết tắt)
-            old_chan_name = slugify_channel_name(subject_code)
+            # Kênh theo format viết-tắt-mã-môn: dùng lại, rename kênh cũ, hoặc tạo mới
+            channel_id, outcome = resolve_course_channel(
+                bot_token, guild_id, conn, channel_map, category_map,
+                subject_code, display_name, extract_semester_index(shortname),
+            )
 
-            if new_chan_name in channel_map:
-                # Kênh đã tồn tại với tên đúng format
-                logging.info(f"Kênh #{new_chan_name} đã tồn tại.")
+            if outcome == EXISTED:
+                logging.info(f"Kênh #{slugify_channel_name(subject_code, display_name)} đã tồn tại.")
+            if outcome in (EXISTED, RENAMED, CREATED):
                 # Đảm bảo chat_id trong DB đúng
-                update_course_chat_id(conn, db_course_id, channel_map[new_chan_name])
-                stats['existed'] += 1
-
-            elif old_chan_name in channel_map and old_chan_name != new_chan_name:
-                # Kênh cũ tồn tại với tên ngắn → rename
-                old_chan_id = channel_map[old_chan_name]
-                result = rename_channel(bot_token, old_chan_id, new_chan_name)
-                if result:
-                    # Cập nhật channel_map
-                    channel_map[new_chan_name] = old_chan_id
-                    del channel_map[old_chan_name]
-                    update_course_chat_id(conn, db_course_id, old_chan_id)
-                    logging.info(f"Đã rename #{old_chan_name} → #{new_chan_name}")
-                    stats['renamed'] += 1
-                else:
-                    stats['skipped'] += 1
-
+                update_course_chat_id(conn, db_course_id, channel_id)
+                stats[outcome] += 1
             else:
-                # Tạo kênh mới
-                ky = extract_semester_index(shortname)
-                if ky is not None:
-                    category_id = resolve_category(bot_token, guild_id, category_map, f"kì {ky}")
-                else:
-                    category_id = get_course_discord_category(conn, subject_code)
-
-                new_channel = create_channel(bot_token, guild_id, new_chan_name, parent_id=category_id)
-                if new_channel:
-                    channel_map[new_chan_name] = new_channel['id']
-                    update_course_chat_id(conn, db_course_id, new_channel['id'])
-                    if category_id:
-                        set_course_discord_category(conn, subject_code, category_id)
-                    stats['created'] += 1
-                else:
-                    stats['skipped'] += 1
+                stats['skipped'] += 1
 
     logging.info(
         f"Đồng bộ kênh hoàn tất: "

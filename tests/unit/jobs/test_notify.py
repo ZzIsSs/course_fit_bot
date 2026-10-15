@@ -13,6 +13,7 @@ import pytest
 from course_bot.jobs import notify
 
 M = "course_bot.jobs.notify"
+R = "course_bot.services.channel_resolver"
 SUBJECT = "CSC10014"
 DISPLAY = "Nhập Môn Trí Tuệ Nhân Tạo"
 NEW_CHAN = "nmttnt-csc10014"   # slugify_channel_name(SUBJECT, DISPLAY)
@@ -43,13 +44,16 @@ def bot():
         "load_env", "get_bot_user", "fetch_and_parse_events", "get_guild_channels", "get_db",
         "check_completions", "crawl_moodle_deadlines", "get_pending_manual_deadlines",
         "get_deadline_by_lms_id", "get_or_create_course", "insert_deadline",
-        "get_course_display_name", "get_course_discord_category", "set_course_discord_category",
-        "resolve_category", "create_channel", "update_deadline_notified", "send_message",
+        "get_course_display_name", "update_deadline_notified", "send_message",
         "add_reaction", "create_scheduled_event", "update_deadline_discord_info",
         "insert_notification", "check_moodle_updates",
     ]
+    # Tìm/tạo kênh đi qua services/channel_resolver.py
+    resolver_names = ["get_course_discord_category", "set_course_discord_category",
+                      "resolve_category", "create_channel", "rename_channel"]
     with ExitStack() as stack:
         m = {n: stack.enter_context(patch(f"{M}.{n}")) for n in names}
+        m.update({n: stack.enter_context(patch(f"{R}.{n}")) for n in resolver_names})
         m["load_env"].return_value = dict(ENV)
         m["get_bot_user"].return_value = {"id": "bot"}
         m["get_guild_channels"].return_value = [
@@ -187,12 +191,20 @@ def test_channel_new_name_exists(bot):
     bot["create_channel"].assert_not_called()
 
 
-def test_channel_old_name_exists_is_used_without_rename(bot):
+def test_channel_old_name_is_renamed(bot):
+    """Phase 8: notify đổi tên kênh cũ (chỉ mã môn) như announcements/sync-channels."""
     bot["get_guild_channels"].return_value = [{"name": OLD_CHAN, "id": "chan-old", "type": 0}]
-    with patch(f"{M}.rename_channel", create=True) as rename:
-        run(bot, moodle_event(timedelta(days=10)), deadline_row())
+    run(bot, moodle_event(timedelta(days=10)), deadline_row())
+    bot["rename_channel"].assert_called_once_with("tok", "chan-old", NEW_CHAN)
     assert bot["send_message"].call_args[0][1] == "chan-old"
-    rename.assert_not_called()
+    bot["create_channel"].assert_not_called()
+
+
+def test_channel_old_name_rename_failure_still_sends(bot):
+    bot["get_guild_channels"].return_value = [{"name": OLD_CHAN, "id": "chan-old", "type": 0}]
+    bot["rename_channel"].return_value = None
+    run(bot, moodle_event(timedelta(days=10)), deadline_row())
+    assert bot["send_message"].call_args[0][1] == "chan-old"
     bot["create_channel"].assert_not_called()
 
 
