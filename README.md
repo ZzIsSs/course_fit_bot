@@ -145,20 +145,37 @@ python main.py --sync-gcal        # Đồng bộ toàn bộ deadline lên Google
 python main.py --dedup [--channel <tên>] [--limit <N>] [--dry-run]   # Dọn tin nhắn trùng
 ```
 
-**Chạy API + Web Dashboard:**
-```bash
-python scripts/dev/run_server.py      # API + frontend đã build tại http://localhost:8000
+**Chạy API + Web Dashboard (Windows PowerShell, từ thư mục gốc repo):**
 
-cd frontend
-npm install
-npm run dev                       # Vite dev server tại http://localhost:5173 (proxy /api → :8000)
+Cần Python ≥ 3.10 và Node.js ≥ 18. Backend Python không cần build; frontend React được build thành `frontend/dist`.
+
+```powershell
+.\scripts\dev\start.ps1 -Install   # lần đầu: cài thư viện Python + npm, build frontend, chạy http://localhost:8000
+.\scripts\dev\start.ps1            # những lần sau: build frontend + chạy API tại http://localhost:8000
+.\scripts\dev\start.ps1 -Dev       # chế độ dev: backend ở cửa sổ mới + Vite tại http://localhost:5173 (sửa code thấy ngay)
 ```
 
-**Chạy test:**
+Làm tay từng bước (mọi hệ điều hành):
 ```bash
-pip install pytest
-python -m pytest tests
+pip install -r requirements.txt pytest
+npm --prefix frontend install
+npm --prefix frontend run build && python scripts/dev/run_server.py   # http://localhost:8000
+# hoặc dev: chạy `python scripts/dev/run_server.py` ở một terminal, `npm --prefix frontend run dev` ở terminal khác
 ```
+
+> ⚠️ `run_server.py` dùng `DATABASE_URL` trong `.env`. Xem dashboard thì an toàn, nhưng tick hoàn thành / thêm deadline sẽ **ghi thật** vào DB đó (và deadline mới sẽ được bot thông báo `@everyone` ở lần cron kế tiếp). Muốn thử an toàn, đặt `DATABASE_URL` của staging trước khi chạy: `$env:DATABASE_URL = "<url staging>"`.
+>
+> Thấy lỗi `http proxy error ... ECONNREFUSED` trong cửa sổ Vite nghĩa là backend (cổng 8000) chưa chạy.
+
+**Kiểm tra trước khi commit:**
+```bash
+python -m pytest -m "not integration"   # test backend, không cần mạng / DB
+npm --prefix frontend run build         # kiểm tra TypeScript + build frontend
+python main.py --bogus                  # chỉ in usage, an toàn
+```
+> ⛔ Không chạy `python main.py` (không tham số) hay `--summary`, `--progress`, ... để "thử": các lệnh này gửi thông báo thật lên Discord.
+
+Deploy không cần build tay: Vercel tự chạy `npm install && npm run build` trong `frontend/` mỗi lần push, GitHub Actions tự chạy `python main.py` theo lịch.
 > Các script debug cần token thật (gọi Discord/Moodle thật) nằm ở `scripts/debug/`, chạy trực tiếp bằng `python scripts/debug/<file>.py`. Pytest không thu thập chúng.
 
 ## REST API (Vercel)
