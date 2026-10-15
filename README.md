@@ -62,9 +62,8 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `course_bot/db/` | `connection.py` (kết nối PostgreSQL) và `repositories/` (SQL theo từng bảng: `courses.py`, `deadlines.py`, `moodle_content.py`, `notifications.py`). |
 | `course_bot/integrations/` | Client mỏng cho dịch vụ ngoài: `moodle/webservice.py` (Moodle Web Services), `discord/rest.py` (Discord REST: kênh, tin nhắn, reaction, Scheduled Events), `discord/signature.py` (xác thực Ed25519), `notion/client.py`, `google_calendar/client.py`. |
 | `course_bot/domain/` | Logic thuần, không I/O: `course_naming.py` (tách mã/tên môn, tên kênh), `semester.py` (tính học kỳ). Việc tải và parse `.ics` nằm ở `integrations/moodle/ics_feed.py`. |
-| `course_bot/interactions.py` | Xử lý Slash Commands. |
-| `course_bot/external_api.py` | Endpoint thêm deadline cho bên thứ 3 (xác thực `X-API-Key`). |
-| `api/index.py` | Router hợp nhất cho Vercel (`/api/*`). `api/interactions.py`, `api/add_deadline.py` là các entry riêng cũ. |
+| `course_bot/web/` | Tầng HTTP cho Vercel: `router.py` (điều hướng `/api/*`), `http_utils.py` (JSON, CORS), `routes/dashboard.py` (API cho Web Dashboard), `routes/discord_interactions.py` (Slash Commands), `routes/external.py` (thêm deadline cho bên thứ 3, xác thực `X-API-Key`). Không import `jobs/`, Notion hay Google Calendar. |
+| `api/index.py` | Entry point duy nhất của Vercel: chỉ re-export `handler` từ `course_bot/web/router.py`. |
 | `frontend/` | Web Dashboard (Vite + React + TS + Tailwind). |
 | `migrations/` | SQL tạo và nâng cấp schema (chạy theo thứ tự số). |
 | `scripts/` | Công cụ phụ: đăng ký slash command, chạy server local, setup Termux, đổi tên kênh, gán category, dọn tin nhắn... |

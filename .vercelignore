@@ -1,22 +1,23 @@
-# Exclude bot CLI runner & background logic from Vercel Serverless Functions
+# Vercel chỉ chạy api/index.py -> course_bot/web/ (cùng core/, domain/, db/, integrations/discord/).
+# tests/test_vercel_bundle.py sẽ fail nếu file nào bị ignore mà vẫn được api/ import.
+
+# Runtime A (cron/CLI): web/ không bao giờ import các module này
 main.py
 course_bot/cli.py
 course_bot/jobs/
-course_bot/integrations/google_calendar/client.py
-course_bot/integrations/notion/client.py
+course_bot/integrations/notion/
+course_bot/integrations/google_calendar/
 course_bot/integrations/moodle/webservice.py
-# KHÔNG ignore course_bot/domain/semester.py: api/index.py (/api/stats) import get_current_semester.
-# tests/test_vercel_bundle.py sẽ fail nếu file nào bị ignore mà vẫn được api/ import.
 
-# Exclude docs, tests, scripts & CI
+# Docs, tests, scripts & CI
+scripts/
 tests/
 docs/
-scripts/
 migrations/
 .github/
 *.md
 
-# Exclude secrets & local env
+# Secrets & local env
 service_account*.json
 credentials*.json
 .env

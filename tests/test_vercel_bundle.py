@@ -104,10 +104,17 @@ def test_vercel_bundle_contains_all_imports(entry):
 @pytest.mark.parametrize("path, expected", [
     ("main.py", True),
     ("course_bot/jobs/notify.py", True),
+    ("course_bot/cli.py", True),
+    ("course_bot/integrations/notion/client.py", True),
+    ("course_bot/integrations/google_calendar/client.py", True),
+    ("scripts/dev/run_server.py", True),
     ("docs/x.md", True),
     ("service_account.json", True),
     ("course_bot/db/connection.py", False),
     ("api/index.py", False),
+    ("course_bot/web/router.py", False),
+    ("course_bot/web/routes/dashboard.py", False),
+    ("course_bot/integrations/discord/signature.py", False),
 ])
 def test_ignore_matcher(path, expected):
     assert bool(_is_ignored(path, _load_ignore_patterns())) is expected
