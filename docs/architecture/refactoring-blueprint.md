@@ -278,6 +278,7 @@ Ask these questions in order and stop at the first "yes":
 ```
 
 - **Amended 2026-10-15 (Phase 4):** `domain/` sits *below* `db/` and `integrations/`, not beside them. `integrations/moodle/ics_feed.py` needs `domain.course_naming.extract_subject`, and `domain/` is pure, so this direction can't create an import cycle. `domain/` must never import `db/`, `integrations/`, `services/`, `jobs/` or `web/`.
+- **Temporary exception 2026-10-15 (Phase 6):** `jobs/notify.py` imports `jobs.completions.check_completions`, `jobs.crawl_deadlines.crawl_moodle_deadlines` and `jobs.announcements.check_moodle_updates`, and `jobs/reports.py` imports `check_completions`. These are direct `jobs/` → `jobs/` imports. Phase 8 moves those three functions into `services/` and removes the exception.
 - Arrows point downward only. A module may import from any layer **below** it, never from a layer beside or above it. The exceptions are `jobs/` ↔ `jobs/` and `routes/` ↔ `routes/`, which are allowed only through `services/`.
 - Optional enforcement: add [`import-linter`](https://pypi.org/project/import-linter/) with a `layers` contract to `pyproject.toml` and run it in CI.
 

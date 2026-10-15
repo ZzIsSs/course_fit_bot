@@ -1,9 +1,11 @@
 import sys
-from course_bot.jobs.notify import (
-    run_main_bot, send_daily_summary, send_progress_report,
-    check_announcements, sync_channels, sync_notion, sync_google_calendar,
-    run_deduplicate_messages, crawl_deadlines_standalone
-)
+from course_bot.jobs.notify import run_main_bot
+from course_bot.jobs.reports import send_daily_summary, send_progress_report
+from course_bot.jobs.announcements import check_announcements
+from course_bot.jobs.sync_channels import sync_channels
+from course_bot.jobs.sync_external import sync_notion, sync_google_calendar
+from course_bot.jobs.dedup import run_deduplicate_messages
+from course_bot.jobs.crawl_deadlines import crawl_deadlines_standalone
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
