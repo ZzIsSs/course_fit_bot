@@ -67,12 +67,22 @@ def insert_discussion(conn, courses_id, lms_discussion_id, forum_name=None, subj
 
 
 def get_recent_announcements_with_course(conn, limit=20):
-    """Lấy danh sách thông báo môn học gần nhất."""
+    """Lấy các bài đăng diễn đàn Moodle gần nhất cho tab "Bảng tin".
+
+    Đọc từ forum_discussions (bảng mà announcement tracker thực sự ghi vào),
+    không phải bảng announcements (chưa có code nào ghi). Giữ tên cột trả về cũ
+    (announcements_id, announcements_name, source_url) để frontend không phải đổi.
+    created_time là lúc bot phát hiện bài đăng, không phải lúc giảng viên đăng.
+    """
     return fetch_all(conn,
-        """SELECT a.announcements_id, a.courses_id, a.announcements_name, a.created_time, a.source_url,
+        """SELECT f.discussion_id AS announcements_id, f.courses_id,
+                  COALESCE(f.subject, f.forum_name, 'Bài đăng diễn đàn') AS announcements_name,
+                  f.created_time,
+                  'https://courses.fit.hcmus.edu.vn/mod/forum/discuss.php?d=' || f.lms_discussion_id AS source_url,
+                  f.author, f.forum_name,
                   c.course_name, c.display_name AS course_display_name
-           FROM announcements a
-           JOIN courses c ON a.courses_id = c.courses_id
-           ORDER BY a.created_time DESC
+           FROM forum_discussions f
+           JOIN courses c ON f.courses_id = c.courses_id
+           ORDER BY f.created_time DESC, f.discussion_id DESC
            LIMIT %s""",
         (limit,))

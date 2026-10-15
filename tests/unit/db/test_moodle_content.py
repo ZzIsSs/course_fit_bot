@@ -29,3 +29,21 @@ def test_get_known_modules_timezone():
 
 if __name__ == '__main__':
     test_get_known_modules_timezone()
+
+
+def test_recent_announcements_read_forum_discussions():
+    """Tab "Bảng tin" đọc forum_discussions (bảng announcements chưa có code nào ghi)."""
+    from course_bot.db.repositories.moodle_content import get_recent_announcements_with_course
+
+    with patch('course_bot.db.repositories.moodle_content.fetch_all', return_value=[]) as mock_fetch:
+        assert get_recent_announcements_with_course(None, limit=5) == []
+
+    sql = " ".join(mock_fetch.call_args[0][1].split())
+    assert "FROM forum_discussions f" in sql
+    assert "FROM announcements" not in sql
+    # Giữ tên cột cũ cho frontend
+    for column in ("AS announcements_id", "AS announcements_name", "AS source_url",
+                   "f.created_time", "c.course_name", "AS course_display_name", "f.author"):
+        assert column in sql
+    assert "discuss.php?d=' || f.lms_discussion_id" in sql
+    assert mock_fetch.call_args[0][2] == (5,)
