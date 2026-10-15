@@ -18,7 +18,7 @@ from course_bot.integrations.moodle.webservice import (
 from course_bot.domain.course_naming import extract_subject, extract_display_name, slugify_channel_name
 from course_bot.domain.semester import extract_semester_index
 from course_bot.integrations.discord.rest import get_guild_channels, create_channel, send_message, rename_channel, resolve_category
-from course_bot.db_queries import (
+from course_bot.db.repositories.deadlines import (
     get_or_create_course, get_known_modules_for_course,
     upsert_module, has_modules, get_known_discussion_ids,
     insert_discussion, update_course_crawl_time,

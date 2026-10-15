@@ -7,7 +7,7 @@ course_bot/integrations/discord/signature.py.
 from datetime import datetime, timezone
 
 from course_bot.db.connection import get_db
-from course_bot.db_queries import (
+from course_bot.db.repositories.deadlines import (
     get_or_create_course, insert_deadline_manual, get_course_name_by_chat_id,
     get_deadlines_for_course_or_all
 )

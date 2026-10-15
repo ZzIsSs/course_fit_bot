@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from course_bot.core.config import load_env
 from course_bot.db.connection import get_db
-from course_bot.db_queries import set_course_discord_category, get_all_courses
+from course_bot.db.repositories.deadlines import set_course_discord_category, get_all_courses
 
 
 def main():

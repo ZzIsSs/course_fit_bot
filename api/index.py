@@ -27,7 +27,7 @@ from course_bot.interactions import handle_interaction
 from course_bot.external_api import verify_api_key, handle_add_deadline
 from course_bot.core.time_utils import parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
-from course_bot.db_queries import (
+from course_bot.db.repositories.deadlines import (
     get_or_create_course,
     insert_deadline_manual,
     toggle_deadline_completed,

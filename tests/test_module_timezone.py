@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from course_bot.db_queries import get_known_modules_for_course
+from course_bot.db.repositories.deadlines import get_known_modules_for_course
 
 
 def test_get_known_modules_timezone():
@@ -17,7 +17,7 @@ def test_get_known_modules_timezone():
         {'lms_module_id': '103', 'time_modified': expected_epoch},
     ]
 
-    with patch('course_bot.db_queries.fetch_all', return_value=mock_rows):
+    with patch('course_bot.db.repositories.deadlines.fetch_all', return_value=mock_rows):
         result = get_known_modules_for_course(None, 1)
 
     print("Result:", result)

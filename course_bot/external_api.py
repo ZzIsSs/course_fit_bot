@@ -9,7 +9,7 @@ import uuid
 import json
 
 from course_bot.db.connection import get_db
-from course_bot.db_queries import get_or_create_course, insert_deadline_manual
+from course_bot.db.repositories.deadlines import get_or_create_course, insert_deadline_manual
 from course_bot.core.time_utils import parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
 
