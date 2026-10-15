@@ -44,3 +44,10 @@ def test_vercel_handler_exported():
     """vercel.json rewrite /api/(.*) -> /api/index.py cần class `handler`."""
     index = importlib.import_module("api.index")
     assert hasattr(index, "handler")
+
+
+def test_api_has_only_index():
+    """Checklist 4.3: api/index.py là entry duy nhất; mọi route nằm trong course_bot/web/."""
+    api_dir = os.path.join(ROOT, "api")
+    entries = sorted(n for n in os.listdir(api_dir) if n.endswith(".py"))
+    assert entries == ["index.py"]
