@@ -1,8 +1,5 @@
-import sys
-import os
 import logging
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from course_bot.core.config import load_env
 from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses

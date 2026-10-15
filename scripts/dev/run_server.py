@@ -14,9 +14,8 @@ if sys.stdout:
 from dotenv import load_dotenv
 load_dotenv()
 
-# Thêm root vào sys.path
+# Thư mục gốc repo (để phục vụ frontend/dist)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
 
 from api.index import handler as ApiHandler
 

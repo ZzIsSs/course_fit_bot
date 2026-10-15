@@ -43,12 +43,12 @@ if ($Install) {
 
 if ($Dev) {
     Write-Host '==> Mở backend API (http://localhost:8000) trong cửa sổ mới' -ForegroundColor Cyan
-    Start-Process powershell -WorkingDirectory $root -ArgumentList '-NoExit', '-Command', 'python scripts/dev/run_server.py'
+    Start-Process powershell -WorkingDirectory $root -ArgumentList '-NoExit', '-Command', 'python -m scripts.dev.run_server'
     Write-Host '==> Vite dev server: mở http://localhost:5173 (Ctrl+C để dừng; nhớ tắt cả cửa sổ backend)' -ForegroundColor Cyan
     npm --prefix frontend run dev
 }
 else {
     Invoke-Step 'Build frontend' { npm --prefix frontend run build }
     Write-Host '==> Chạy API + Web Dashboard: mở http://localhost:8000 (Ctrl+C để dừng)' -ForegroundColor Cyan
-    python scripts/dev/run_server.py
+    python -m scripts.dev.run_server
 }

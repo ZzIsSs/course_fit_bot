@@ -1,8 +1,4 @@
-import sys
-import os
 
-# Ensure course_bot package is accessible
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from course_bot.integrations.moodle.ics_feed import fetch_and_parse_events
 

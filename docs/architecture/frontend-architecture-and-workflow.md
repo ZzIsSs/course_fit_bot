@@ -358,7 +358,7 @@ export function useToggleComplete() {
    - Chạy `npm run build` trong `frontend/` đảm bảo 100% không có lỗi TypeScript (`tsc --noEmit`).
    - Kiểm tra kích thước bundle: Đảm bảo tổng dung lượng gzipped `< 200 KB`.
 2. **Kiểm thử End-to-End cục bộ (Local E2E Testing):**
-   - Chạy script `python scripts/dev/run_server.py` kết hợp mở web dashboard.
+   - Chạy script `python -m scripts.dev.run_server` kết hợp mở web dashboard.
    - Kiểm tra hiển thị đủ 18 môn học từ cơ sở dữ liệu Supabase thực tế.
    - Thử thêm 1 deadline nội bộ qua Form -> Kiểm tra DB đã lưu thành công.
    - Thử tick hoàn thành bài tập -> Kiểm tra trạng thái DB và hiệu ứng Toast.

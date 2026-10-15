@@ -3,13 +3,13 @@ Script test bot Discord — Dùng để debug và kiểm tra chức năng.
 
 Chạy:
     1. Kiểm tra calendar URL trả về gì:
-        python scripts/debug/live_bot_check.py --check-calendar
+        python -m scripts.debug.live_bot_check --check-calendar
 
     2. Test tạo kênh mới + gửi thông báo + tạo lịch Discord:
-        python scripts/debug/live_bot_check.py --test-create
+        python -m scripts.debug.live_bot_check --test-create
 
     3. Dọn dẹp kênh test đã tạo:
-        python scripts/debug/live_bot_check.py --cleanup
+        python -m scripts.debug.live_bot_check --cleanup
 
 Cần set biến môi trường trước khi chạy:
     $env:DISCORD_BOT_TOKEN="token_của_bot"
@@ -268,7 +268,7 @@ def test_create():
     print(f"🎉 Test hoàn tất! Kiểm tra Discord server để xem kết quả.")
     print(f"   - Kênh #{test_channel_name} với tin nhắn + reaction ✅")
     print(f"   - Scheduled Event ở thanh bên trái")
-    print(f"\n🧹 Chạy 'python scripts/debug/live_bot_check.py --cleanup' để dọn dẹp sau khi test.")
+    print(f"\n🧹 Chạy 'python -m scripts.debug.live_bot_check --cleanup' để dọn dẹp sau khi test.")
 
 # ==================== CLEANUP ====================
 
@@ -322,9 +322,9 @@ def cleanup():
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("📋 Cách dùng:")
-        print("   python scripts/debug/live_bot_check.py --check-calendar   Kiểm tra calendar URL trả về gì")
-        print("   python scripts/debug/live_bot_check.py --test-create       Test tạo kênh + thông báo + lịch")
-        print("   python scripts/debug/live_bot_check.py --cleanup           Dọn dẹp kênh/event test")
+        print("   python -m scripts.debug.live_bot_check --check-calendar   Kiểm tra calendar URL trả về gì")
+        print("   python -m scripts.debug.live_bot_check --test-create       Test tạo kênh + thông báo + lịch")
+        print("   python -m scripts.debug.live_bot_check --cleanup           Dọn dẹp kênh/event test")
         sys.exit(0)
 
     cmd = sys.argv[1]

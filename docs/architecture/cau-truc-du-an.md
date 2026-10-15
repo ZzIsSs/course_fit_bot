@@ -184,7 +184,7 @@ Nguyên có thể mở terminal tại thư mục dự án và chạy các lệnh
 | `python main.py --sync-notion` | Đồng bộ toàn bộ danh sách deadline sang Notion Todo List. |
 | `python main.py --sync-gcal` | Đồng bộ toàn bộ deadline sang Google Calendar. |
 | `python main.py --dedup --dry-run` | Quét kiểm tra xem trên Discord có tin nhắn thông báo nào bị trùng lặp không. |
-| `python scripts/ops/register_commands.py` | Đăng ký Slash Command (`/add_deadline`) lên server Discord. |
+| `python -m scripts.ops.register_commands` | Đăng ký Slash Command (`/add_deadline`) lên server Discord. |
 
 ---
 

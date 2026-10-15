@@ -119,7 +119,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 3. Trong Discord Developer Portal, đặt **Interactions Endpoint URL** = `https://<domain>.vercel.app/api/interactions`.
 4. Đăng ký lệnh (chạy một lần, hoặc mỗi khi sửa danh sách lệnh):
    ```bash
-   python scripts/ops/register_commands.py
+   python -m scripts.ops.register_commands
    ```
 
 ### 5. (Tuỳ chọn) Máy trạm Termux
@@ -160,15 +160,15 @@ Làm tay từng bước:
 # Windows PowerShell 5.1 (mặc định trên Windows) — không hỗ trợ `&&`
 pip install -r requirements.txt pytest
 npm --prefix frontend install
-npm --prefix frontend run build; if ($?) { python scripts/dev/run_server.py }   # http://localhost:8000
+npm --prefix frontend run build; if ($?) { python -m scripts.dev.run_server }   # http://localhost:8000
 ```
 ```bash
 # Git Bash, macOS, Linux hoặc PowerShell 7+
 pip install -r requirements.txt pytest
 npm --prefix frontend install
-npm --prefix frontend run build && python scripts/dev/run_server.py   # http://localhost:8000
+npm --prefix frontend run build && python -m scripts.dev.run_server   # http://localhost:8000
 ```
-Chế độ dev làm tay: chạy `python scripts/dev/run_server.py` ở một terminal và `npm --prefix frontend run dev` ở terminal khác, rồi mở http://localhost:5173.
+Chế độ dev làm tay: chạy `python -m scripts.dev.run_server` ở một terminal và `npm --prefix frontend run dev` ở terminal khác, rồi mở http://localhost:5173.
 
 > ⚠️ `run_server.py` dùng `DATABASE_URL` trong `.env`. Xem dashboard thì an toàn, nhưng tick hoàn thành / thêm deadline sẽ **ghi thật** vào DB đó (và deadline mới sẽ được bot thông báo `@everyone` ở lần cron kế tiếp). Muốn thử an toàn, đặt `DATABASE_URL` của staging trước khi chạy: `$env:DATABASE_URL = "<url staging>"`.
 >
@@ -183,7 +183,9 @@ python main.py --bogus                  # chỉ in usage, an toàn
 > ⛔ Không chạy `python main.py` (không tham số) hay `--summary`, `--progress`, ... để "thử": các lệnh này gửi thông báo thật lên Discord.
 
 Deploy không cần build tay: Vercel tự chạy `npm install && npm run build` trong `frontend/` mỗi lần push, GitHub Actions tự chạy `python main.py` theo lịch.
-> Các script debug cần token thật (gọi Discord/Moodle thật) nằm ở `scripts/debug/`, chạy trực tiếp bằng `python scripts/debug/<file>.py`. Pytest không thu thập chúng.
+> Mọi script trong `scripts/` chạy bằng `python -m scripts.<nhóm>.<tên_file>` (không có `.py`) **từ thư mục gốc repo**, ví dụ `python -m scripts.ops.set_category`. Cách này giúp import được package `course_bot` mà không cần sửa `sys.path`.
+>
+> Các script debug cần token thật (gọi Discord/Moodle thật) nằm ở `scripts/debug/`, chạy bằng `python -m scripts.debug.<tên_file>`. Pytest không thu thập chúng.
 
 ## REST API (Vercel)
 
