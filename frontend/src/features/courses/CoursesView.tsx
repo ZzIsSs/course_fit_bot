@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Course } from '../../types';
+import { Course } from '@/shared/types';
 import { BookOpen, MessageSquare, ExternalLink, Search, Layers } from 'lucide-react';
-import { Badge } from '../../components/ui/Badge';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { Badge } from '@/shared/ui/Badge';
+import { Skeleton } from '@/shared/ui/Skeleton';
 
 interface CoursesViewProps {
   courses: Course[];

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Radio, RefreshCw, CheckCircle2, ShieldCheck, Database, Calendar as CalIcon, MessageSquare } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Button } from '@/shared/ui/Button';
 
 interface SettingsViewProps {
   onManualRefresh: () => Promise<void>;

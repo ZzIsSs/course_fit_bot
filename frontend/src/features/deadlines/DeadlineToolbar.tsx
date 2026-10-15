@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, Filter, List, LayoutGrid, X } from 'lucide-react';
-import { Course, FilterStatus, ViewMode } from '../../types';
+import { Course, FilterStatus, ViewMode } from '@/shared/types';
 
 interface DeadlineToolbarProps {
   searchQuery: string;

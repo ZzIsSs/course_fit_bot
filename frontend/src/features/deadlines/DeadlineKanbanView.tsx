@@ -1,7 +1,7 @@
 import React from 'react';
-import { Deadline } from '../../types';
+import { Deadline } from '@/shared/types';
 import { DeadlineItemCard } from './DeadlineItemCard';
-import { getCountdown } from '../../utils/dateUtils';
+import { getCountdown } from '@/shared/utils/dateUtils';
 import { CheckCircle2, Flame, ListTodo } from 'lucide-react';
 
 interface DeadlineKanbanViewProps {

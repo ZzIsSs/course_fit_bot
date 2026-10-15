@@ -1,9 +1,9 @@
 import React from 'react';
-import { Announcement } from '../../types';
+import { Announcement } from '@/shared/types';
 import { Sparkles, ExternalLink, Calendar, User, MessageCircle } from 'lucide-react';
-import { formatVietnameseDate } from '../../utils/dateUtils';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Badge } from '../../components/ui/Badge';
+import { formatVietnameseDate } from '@/shared/utils/dateUtils';
+import { Skeleton } from '@/shared/ui/Skeleton';
+import { Badge } from '@/shared/ui/Badge';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];

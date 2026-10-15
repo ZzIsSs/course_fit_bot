@@ -1,9 +1,9 @@
 import React from 'react';
-import { Deadline } from '../../types';
+import { Deadline } from '@/shared/types';
 import { DeadlineItemCard } from './DeadlineItemCard';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { Skeleton } from '@/shared/ui/Skeleton';
 import { CheckCircle2, Inbox } from 'lucide-react';
-import { getCountdown } from '../../utils/dateUtils';
+import { getCountdown } from '@/shared/utils/dateUtils';
 
 interface DeadlineListViewProps {
   deadlines: Deadline[];

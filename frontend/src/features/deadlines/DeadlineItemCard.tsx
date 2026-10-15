@@ -1,9 +1,9 @@
 import React from 'react';
 import { ExternalLink, MessageSquare, Calendar, User } from 'lucide-react';
-import { Deadline } from '../../types';
-import { Badge } from '../../components/ui/Badge';
-import { Checkbox } from '../../components/ui/Checkbox';
-import { getCountdown, formatVietnameseDate } from '../../utils/dateUtils';
+import { Deadline } from '@/shared/types';
+import { Badge } from '@/shared/ui/Badge';
+import { Checkbox } from '@/shared/ui/Checkbox';
+import { getCountdown, formatVietnameseDate } from '@/shared/utils/dateUtils';
 
 interface DeadlineItemCardProps {
   deadline: Deadline;

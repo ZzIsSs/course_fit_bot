@@ -1,4 +1,4 @@
-import { Course, Deadline, DashboardStats, Announcement } from '../types';
+import { Course, Deadline, DashboardStats, Announcement } from '@/shared/types';
 
 const API_BASE = '/api';
 

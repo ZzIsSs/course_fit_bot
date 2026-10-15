@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, Flame, CheckCircle2, BookOpen } from 'lucide-react';
-import { DashboardStats } from '../../types';
+import { DashboardStats } from '@/shared/types';
 
 interface MetricCardsProps {
   stats: DashboardStats;

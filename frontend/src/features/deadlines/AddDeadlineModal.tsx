@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Course } from '../../types';
-import { Modal } from '../../components/ui/Modal';
-import { Button } from '../../components/ui/Button';
+import { Course } from '@/shared/types';
+import { Modal } from '@/shared/ui/Modal';
+import { Button } from '@/shared/ui/Button';
 import { Calendar, User, Link as LinkIcon, Sparkles } from 'lucide-react';
 
 interface AddDeadlineModalProps {

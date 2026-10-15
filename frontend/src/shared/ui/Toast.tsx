@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
-import { ToastMessage } from '../../types';
+import { ToastMessage } from '@/shared/types';
 
 interface ToastProps {
   toasts: ToastMessage[];

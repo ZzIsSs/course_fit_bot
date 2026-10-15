@@ -1,7 +1,7 @@
 import React from 'react';
 import { Award, Sparkles, ArrowRight } from 'lucide-react';
-import { ProgressBar } from '../../components/ui/ProgressBar';
-import { getCurrentSemester } from '../../utils/dateUtils';
+import { ProgressBar } from '@/shared/ui/ProgressBar';
+import { getCurrentSemester } from '@/shared/utils/dateUtils';
 
 interface HeroBannerProps {
   completionRate: number;

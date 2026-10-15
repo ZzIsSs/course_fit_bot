@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ActiveTab, ViewMode, FilterStatus, Deadline, Course, DashboardStats, Announcement, ToastMessage } from './types';
-import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion, isAbortError } from './api/client';
-import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { BottomNav } from './components/layout/BottomNav';
-import { ToastContainer } from './components/ui/Toast';
-import { HeroProgressBanner } from './features/dashboard/HeroProgressBanner';
-import { MetricCards } from './features/dashboard/MetricCards';
-import { DeadlineToolbar } from './features/deadlines/DeadlineToolbar';
-import { DeadlineListView } from './features/deadlines/DeadlineListView';
-import { DeadlineKanbanView } from './features/deadlines/DeadlineKanbanView';
-import { AddDeadlineModal } from './features/deadlines/AddDeadlineModal';
-import { CoursesView } from './features/courses/CoursesView';
-import { AnnouncementsView } from './features/announcements/AnnouncementsView';
-import { SettingsView } from './features/settings/SettingsView';
-import { getCountdown } from './utils/dateUtils';
+import { ActiveTab, ViewMode, FilterStatus, Deadline, Course, DashboardStats, Announcement, ToastMessage } from '@/shared/types';
+import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion, isAbortError } from '@/shared/api/client';
+import { Header } from '@/app/layout/Header';
+import { Sidebar } from '@/app/layout/Sidebar';
+import { BottomNav } from '@/app/layout/BottomNav';
+import { ToastContainer } from '@/shared/ui/Toast';
+import { HeroProgressBanner } from '@/features/dashboard/HeroProgressBanner';
+import { MetricCards } from '@/features/dashboard/MetricCards';
+import { DeadlineToolbar } from '@/features/deadlines/DeadlineToolbar';
+import { DeadlineListView } from '@/features/deadlines/DeadlineListView';
+import { DeadlineKanbanView } from '@/features/deadlines/DeadlineKanbanView';
+import { AddDeadlineModal } from '@/features/deadlines/AddDeadlineModal';
+import { CoursesView } from '@/features/courses/CoursesView';
+import { AnnouncementsView } from '@/features/announcements/AnnouncementsView';
+import { SettingsView } from '@/features/settings/SettingsView';
+import { getCountdown } from '@/shared/utils/dateUtils';
 import { Calendar, RefreshCw, AlertCircle } from 'lucide-react';
-import { Button } from './components/ui/Button';
+import { Button } from '@/shared/ui/Button';
 
 export const App: React.FC = () => {
   // Navigation & View States

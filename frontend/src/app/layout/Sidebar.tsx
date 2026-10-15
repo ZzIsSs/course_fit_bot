@@ -8,7 +8,7 @@ import {
   GraduationCap,
   X,
 } from 'lucide-react';
-import { ActiveTab } from '../../types';
+import { ActiveTab } from '@/shared/types';
 
 interface SidebarProps {
   activeTab: ActiveTab;

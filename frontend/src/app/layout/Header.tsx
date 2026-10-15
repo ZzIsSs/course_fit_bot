@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Sun, Moon, Radio, Menu } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { getCurrentSemester } from '../../utils/dateUtils';
+import { Button } from '@/shared/ui/Button';
+import { getCurrentSemester } from '@/shared/utils/dateUtils';
 
 interface HeaderProps {
   onOpenAddModal: () => void;
