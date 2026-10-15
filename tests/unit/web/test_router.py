@@ -17,18 +17,18 @@ from api.index import handler
 
 # Tên được mock -> module đang giữ tên đó (cập nhật khi di chuyển code).
 TARGETS = {
-    "get_db": "api.index",
-    "get_courses_with_deadline_counts": "api.index",
-    "get_dashboard_stats": "api.index",
-    "get_all_deadlines_with_course_details": "api.index",
-    "get_recent_announcements_with_course": "api.index",
-    "get_or_create_course": "api.index",
-    "insert_deadline_manual": "api.index",
-    "toggle_deadline_completed": "api.index",
-    "verify_signature": "api.index",
-    "handle_interaction": "api.index",
-    "verify_api_key": "api.index",
-    "handle_add_deadline": "api.index",
+    "get_db": "course_bot.web.router",
+    "get_courses_with_deadline_counts": "course_bot.web.router",
+    "get_dashboard_stats": "course_bot.web.router",
+    "get_all_deadlines_with_course_details": "course_bot.web.router",
+    "get_recent_announcements_with_course": "course_bot.web.router",
+    "get_or_create_course": "course_bot.web.router",
+    "insert_deadline_manual": "course_bot.web.router",
+    "toggle_deadline_completed": "course_bot.web.router",
+    "verify_signature": "course_bot.web.router",
+    "handle_interaction": "course_bot.web.router",
+    "verify_api_key": "course_bot.web.router",
+    "handle_add_deadline": "course_bot.web.router",
 }
 
 DATABASE_URL = os.environ["DATABASE_URL"]
