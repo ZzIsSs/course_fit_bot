@@ -2,7 +2,7 @@ import os, sys, json
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from course_bot.external_api import verify_api_key, handle_add_deadline
+from course_bot.web.routes.external import verify_api_key, handle_add_deadline
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 

@@ -23,8 +23,8 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from course_bot.db.connection import get_db
 from course_bot.integrations.discord.signature import verify_signature
-from course_bot.interactions import handle_interaction
-from course_bot.external_api import verify_api_key, handle_add_deadline
+from course_bot.web.routes.discord_interactions import handle_interaction
+from course_bot.web.routes.external import verify_api_key, handle_add_deadline
 from course_bot.core.time_utils import parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
 from course_bot.db.repositories.courses import (

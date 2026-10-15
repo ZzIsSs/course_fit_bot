@@ -2,7 +2,7 @@
 Cấu hình chung cho pytest.
 
 Biến môi trường giả được gán ĐÈ ngay khi conftest load, trước khi bất kỳ
-module nào trong course_bot/ được import (course_bot/interactions.py đọc
+module nào trong course_bot/ được import (course_bot/integrations/discord/signature.py đọc
 DISCORD_PUBLIC_KEY lúc import). load_dotenv() mặc định không ghi đè biến
 đã tồn tại, nên test không bao giờ nạp được DB/token thật từ .env.
 Biến của tích hợp tuỳ chọn (Notion, Google) gán chuỗi rỗng để luôn tắt.

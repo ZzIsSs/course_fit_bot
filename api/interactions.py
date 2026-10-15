@@ -3,7 +3,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from course_bot.integrations.discord.signature import verify_signature
-from course_bot.interactions import handle_interaction
+from course_bot.web.routes.discord_interactions import handle_interaction
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
