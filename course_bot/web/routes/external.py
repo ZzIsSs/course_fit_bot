@@ -9,10 +9,13 @@ import uuid
 import json
 
 from course_bot.db.connection import get_db
-from course_bot.db.repositories.courses import get_or_create_course
-from course_bot.db.repositories.deadlines import insert_deadline_manual
-from course_bot.core.time_utils import parse_due_time
-from course_bot.core.time_utils import LOCAL_TZ
+from course_bot.services.manual_deadlines import (
+    add_manual_deadline,
+    clean_added_by,
+    clean_course,
+    clean_name,
+    parse_due,
+)
 
 EXTERNAL_API_KEY = os.environ.get('EXTERNAL_API_KEY')
 
@@ -57,16 +60,16 @@ def handle_add_deadline(body_text, database_url):
     if not isinstance(data, dict):
         return 400, {"ok": False, "error": "Body JSON phải là một object."}
 
-    ten = " ".join((data.get('ten') or '').strip().split())[:250]
+    ten = clean_name(data.get('ten'))
     han_chot_raw = (data.get('han_chot') or '').strip()
-    mon = (data.get('mon') or '').strip().upper()[:100]
-    nguon = " ".join((data.get('nguon') or 'External API').strip().split())[:95]
+    mon = clean_course(data.get('mon'))
+    nguon = clean_added_by(data.get('nguon'), 'External API')
     ext_id = (data.get('id') or '').strip()[:_MAX_EXT_ID_LEN]
 
     if not ten or not han_chot_raw or not mon:
         return 400, {"ok": False, "error": "Thiếu trường bắt buộc: ten, han_chot, mon."}
 
-    due_time = parse_due_time(han_chot_raw, LOCAL_TZ)
+    due_time = parse_due(han_chot_raw)
     if due_time is None:
         return 400, {"ok": False, "error": "han_chot sai định dạng. VD: '25/12/2026 23:59' hoặc '25/12/2026'."}
 
@@ -75,9 +78,8 @@ def handle_add_deadline(body_text, database_url):
 
     try:
         with get_db(database_url) as conn:
-            courses_id = get_or_create_course(conn, mon)
-            deadlines_id = insert_deadline_manual(
-                conn, courses_id, ten, lms_id, due_time,
+            deadlines_id = add_manual_deadline(
+                conn, mon, ten, due_time, lms_id,
                 source_url=f"API bên thứ 3 ({nguon})",
                 added_by=nguon,
                 source='external',

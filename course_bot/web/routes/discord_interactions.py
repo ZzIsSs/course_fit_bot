@@ -8,15 +8,18 @@ import json
 from datetime import datetime, timezone
 
 from course_bot.db.connection import get_db
-from course_bot.db.repositories.courses import get_or_create_course, get_course_name_by_chat_id
-from course_bot.db.repositories.deadlines import (
-    insert_deadline_manual,
-    get_deadlines_for_course_or_all,
-)
-from course_bot.core.time_utils import ensure_tz, parse_due_time
+from course_bot.db.repositories.courses import get_course_name_by_chat_id
+from course_bot.db.repositories.deadlines import get_deadlines_for_course_or_all
+from course_bot.core.time_utils import ensure_tz
 from course_bot.core.time_utils import LOCAL_TZ
 from course_bot.integrations.discord.signature import verify_signature
-from course_bot.domain.messages import sanitize_discord_text
+from course_bot.services.manual_deadlines import (
+    add_manual_deadline,
+    clean_added_by,
+    clean_course,
+    clean_name,
+    parse_due,
+)
 
 import logging
 
@@ -86,14 +89,14 @@ def _handle_add_deadline(interaction, database_url):
     channel_id = interaction.get('channel_id')
     user_info = (interaction.get('member') or {}).get('user') or interaction.get('user') or {}
     raw_username = user_info.get('username', 'Unknown')
-    username = sanitize_discord_text(raw_username)[:95] or 'Unknown'
+    username = clean_added_by(raw_username, 'Unknown')
 
     raw_name = _get_option(options, 'ten')
     raw_due = _get_option(options, 'han_chot')
     raw_course = _get_option(options, 'mon')
 
-    name = sanitize_discord_text(raw_name)[:250]
-    due_time = parse_due_time(raw_due or '', LOCAL_TZ)
+    name = clean_name(raw_name)
+    due_time = parse_due(raw_due)
 
     if not name or due_time is None:
         return _ephemeral(
@@ -102,15 +105,14 @@ def _handle_add_deadline(interaction, database_url):
         )
 
     with get_db(database_url) as conn:
-        clean_course_input = sanitize_discord_text(raw_course).upper()[:100] if raw_course else None
+        clean_course_input = clean_course(raw_course) if raw_course else None
         course_name = clean_course_input if clean_course_input else get_course_name_by_chat_id(conn, channel_id)
         if not course_name:
             return _ephemeral("❌ Không xác định được môn. Dùng lệnh trong kênh của môn, hoặc điền option `mon`.")
 
-        courses_id = get_or_create_course(conn, course_name)
         interaction_id = str(interaction.get('id', 'unknown'))[:40]
-        deadlines_id = insert_deadline_manual(
-            conn, courses_id, name, f"manual-{interaction_id}", due_time,
+        deadlines_id = add_manual_deadline(
+            conn, course_name, name, due_time, f"manual-{interaction_id}",
             source_url=f"Discord (thêm bởi {username})", added_by=username
         )
 

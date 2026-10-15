@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Unit tests cho tính năng add_deadline sau khi refactor."""
+"""Unit tests cho thêm deadline thủ công: services/manual_deadlines.py và các hàm nó dựa vào."""
 import unittest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
@@ -10,6 +10,7 @@ from course_bot.web.routes.discord_interactions import _public, _handle_add_dead
 from course_bot.db.repositories.courses import get_or_create_course
 from course_bot.db.repositories.deadlines import insert_deadline_manual
 from course_bot.core.time_utils import LOCAL_TZ
+from course_bot.services import manual_deadlines as svc
 
 
 class TestAddDeadlineRefactor(unittest.TestCase):
@@ -104,6 +105,56 @@ class TestAddDeadlineRefactor(unittest.TestCase):
             )
             self.assertIsNone(res_id)
 
+
+
+class TestManualDeadlineService(unittest.TestCase):
+    """Quy tắc chuẩn hoá dùng chung cho Web, Discord và API bên thứ 3."""
+
+    def test_clean_name(self):
+        self.assertEqual(svc.clean_name("  Bài <@&1>  @everyone\x00 1 "), "Bài @\u200b&role @\u200beveryone 1")
+        self.assertEqual(svc.clean_name(None), "")
+        self.assertEqual(len(svc.clean_name("x" * 300)), 250)
+
+    def test_clean_course_sanitizes_before_upper(self):
+        self.assertEqual(svc.clean_course("  csc   10014 "), "CSC 10014")
+        # "@everyone".upper() == "@EVERYONE" sẽ lọt bộ lọc nếu viết hoa trước
+        self.assertEqual(svc.clean_course("@everyone"), "@\u200bEVERYONE")
+        self.assertEqual(svc.clean_course(None), "")
+        self.assertEqual(len(svc.clean_course("m" * 150)), 100)
+
+    def test_clean_added_by(self):
+        self.assertEqual(svc.clean_added_by("  An   Nguyen ", "X"), "An Nguyen")
+        self.assertEqual(svc.clean_added_by("   ", "Web Dashboard"), "Web Dashboard")
+        self.assertEqual(svc.clean_added_by(None, "External API"), "External API")
+        self.assertEqual(svc.clean_added_by("@here", "X"), "@\u200bhere")
+        self.assertEqual(len(svc.clean_added_by("u" * 120, "X")), 95)
+
+    def test_parse_due(self):
+        self.assertEqual(svc.parse_due(" 25/12/2026 23:59 ").isoformat(), "2026-12-25T16:59:00+00:00")
+        self.assertEqual(svc.parse_due("25/12/2026").isoformat(), "2026-12-25T16:59:00+00:00")
+        self.assertIsNone(svc.parse_due("ngày mai"))
+        self.assertIsNone(svc.parse_due(None))
+
+    def test_add_manual_deadline(self):
+        conn = MagicMock()
+        due = datetime(2026, 12, 25, 16, 59, tzinfo=timezone.utc)
+        with patch("course_bot.services.manual_deadlines.get_or_create_course", return_value=3) as course,              patch("course_bot.services.manual_deadlines.insert_deadline_manual", return_value=42) as insert:
+            res = svc.add_manual_deadline(conn, "CSC10014", "Bài 1", due, "manual-1",
+                                          source_url="u", added_by="An", source="external")
+        self.assertEqual(res, 42)
+        course.assert_called_once_with(conn, "CSC10014")
+        insert.assert_called_once_with(conn, 3, "Bài 1", "manual-1", due,
+                                       source_url="u", added_by="An", source="external")
+
+    def test_add_manual_deadline_default_source(self):
+        with patch("course_bot.services.manual_deadlines.get_or_create_course", return_value=3),              patch("course_bot.services.manual_deadlines.insert_deadline_manual") as insert:
+            svc.add_manual_deadline(MagicMock(), "A", "B", None, "manual-1", source_url="u", added_by="An")
+        self.assertEqual(insert.call_args[1]["source"], "manual")
+
+    def test_toggle_completed(self):
+        with patch("course_bot.services.manual_deadlines.toggle_deadline_completed") as toggle:
+            svc.toggle_completed("conn", 9, True, "An")
+        toggle.assert_called_once_with("conn", 9, True, "An")
 
 if __name__ == "__main__":
     unittest.main()

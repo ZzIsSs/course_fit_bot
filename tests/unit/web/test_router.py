@@ -22,9 +22,9 @@ TARGETS = {
     "get_dashboard_stats": "course_bot.web.routes.dashboard",
     "get_all_deadlines_with_course_details": "course_bot.web.routes.dashboard",
     "get_recent_announcements_with_course": "course_bot.web.routes.dashboard",
-    "get_or_create_course": "course_bot.web.routes.dashboard",
-    "insert_deadline_manual": "course_bot.web.routes.dashboard",
-    "toggle_deadline_completed": "course_bot.web.routes.dashboard",
+    "get_or_create_course": "course_bot.services.manual_deadlines",
+    "insert_deadline_manual": "course_bot.services.manual_deadlines",
+    "toggle_deadline_completed": "course_bot.services.manual_deadlines",
     "verify_signature": "course_bot.web.routes.discord_interactions",
     "handle_interaction": "course_bot.web.routes.discord_interactions",
     "verify_api_key": "course_bot.web.routes.external",
@@ -269,6 +269,23 @@ def test_create_deadline_optional_fields(mocks):
     request("POST", "/api/deadlines", {**VALID, "nguoi_phu_trach": "  An  Nguyen ", "ghi_chu_url": " http://x "})
     _, kwargs = mocks["insert_deadline_manual"].call_args
     assert kwargs == {"source_url": "http://x", "added_by": "An Nguyen", "source": "manual"}
+
+
+def test_create_deadline_blocks_mentions(mocks):
+    """Phase 8 (A6): Web dùng chung quy tắc sanitize với Discord."""
+    mocks["insert_deadline_manual"].return_value = 1
+    request("POST", "/api/deadlines", {"mon": "@everyone", "ten": "Nộp <@&123> @here",
+                                       "han_chot": "25/12/2026", "nguoi_phu_trach": "@everyone An\x00"})
+    mocks["get_or_create_course"].assert_called_once_with(mocks["conn"], "@​EVERYONE")
+    args, kwargs = mocks["insert_deadline_manual"].call_args
+    assert args[2] == "Nộp @​&role @​here"
+    assert kwargs["added_by"] == "@​everyone An"
+
+
+def test_create_deadline_blank_person_uses_default(mocks):
+    mocks["insert_deadline_manual"].return_value = 1
+    request("POST", "/api/deadlines", {**VALID, "nguoi_phu_trach": "   "})
+    assert mocks["insert_deadline_manual"].call_args[1]["added_by"] == "Web Dashboard"
 
 
 def test_create_deadline_duplicate_200(mocks):

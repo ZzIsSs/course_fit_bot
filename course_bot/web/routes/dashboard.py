@@ -6,19 +6,17 @@ import json
 import uuid
 
 from course_bot.db.connection import get_db
-from course_bot.core.time_utils import parse_due_time
-from course_bot.core.time_utils import LOCAL_TZ
-from course_bot.db.repositories.courses import (
-    get_or_create_course,
-    get_courses_with_deadline_counts,
-)
-from course_bot.db.repositories.deadlines import (
-    insert_deadline_manual,
-    toggle_deadline_completed,
-    get_dashboard_stats,
-    get_all_deadlines_with_course_details,
-)
+from course_bot.db.repositories.courses import get_courses_with_deadline_counts
+from course_bot.db.repositories.deadlines import get_dashboard_stats, get_all_deadlines_with_course_details
 from course_bot.db.repositories.moodle_content import get_recent_announcements_with_course
+from course_bot.services.manual_deadlines import (
+    add_manual_deadline,
+    clean_added_by,
+    clean_course,
+    clean_name,
+    parse_due,
+    toggle_completed,
+)
 
 
 def get_courses(database_url):
@@ -71,25 +69,24 @@ def create_deadline(body, database_url):
     except Exception:
         return 400, {"ok": False, "error": "Body không phải JSON hợp lệ."}
 
-    mon = " ".join((data.get("mon") or "").strip().split()).upper()[:100]
-    ten = " ".join((data.get("ten") or "").strip().split())[:250]
+    mon = clean_course(data.get("mon"))
+    ten = clean_name(data.get("ten"))
     han_chot = (data.get("han_chot") or "").strip()
-    nguoi = " ".join((data.get("nguoi_phu_trach") or "Web Dashboard").strip().split())[:95]
+    nguoi = clean_added_by(data.get("nguoi_phu_trach"), "Web Dashboard")
     ghi_chu = (data.get("ghi_chu_url") or "").strip()[:500]
 
     if not mon or not ten or not han_chot:
         return 400, {"ok": False, "error": "Vui lòng điền đủ: mon, ten, han_chot."}
 
-    due_time = parse_due_time(han_chot, LOCAL_TZ)
+    due_time = parse_due(han_chot)
     if due_time is None:
         return 400, {"ok": False, "error": "Sai định dạng ngày. VD: '25/09/2026 23:59'."}
 
     lms_id = f"manual-{uuid.uuid4()}"
     try:
         with get_db(database_url) as conn:
-            courses_id = get_or_create_course(conn, mon)
-            deadlines_id = insert_deadline_manual(
-                conn, courses_id, ten, lms_id, due_time,
+            deadlines_id = add_manual_deadline(
+                conn, mon, ten, due_time, lms_id,
                 source_url=ghi_chu if ghi_chu else "Thêm thủ công qua Web",
                 added_by=nguoi,
                 source="manual"
@@ -118,7 +115,7 @@ def toggle_deadline(body, database_url):
 
     try:
         with get_db(database_url) as conn:
-            toggle_deadline_completed(conn, deadlines_id, completed, completed_by)
+            toggle_completed(conn, deadlines_id, completed, completed_by)
         return 200, {"ok": True, "deadlines_id": deadlines_id, "completed": completed}
     except Exception as e:
         return 500, {"ok": False, "error": f"Lỗi DB khi toggle deadline: {str(e)}"}

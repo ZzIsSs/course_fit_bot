@@ -2,7 +2,8 @@
 Characterization test cho 2 entry point thêm deadline thủ công (bản Web nằm trong
 test_router.py): Discord /add_deadline và API bên thứ 3 (/api/add_deadline).
 
-Chốt chuẩn hoá input, lms_id, source/added_by và response của từng nơi.
+Chốt chuẩn hoá input, lms_id, source/added_by và response của từng nơi. Từ Phase 8
+cả hai đi qua services/manual_deadlines.py (cùng quy tắc sanitize với bản Web).
 """
 import json
 from contextlib import ExitStack
@@ -19,8 +20,9 @@ DUE_UTC = "2026-12-25T16:59:00+00:00"   # 25/12/2026 23:59 giờ VN
 def db():
     def _make(module):
         stack = ExitStack()
-        m = {n: stack.enter_context(patch(f"{module}.{n}"))
-             for n in ("get_db", "get_or_create_course", "insert_deadline_manual")}
+        m = {"get_db": stack.enter_context(patch(f"{module}.get_db"))}
+        m.update({n: stack.enter_context(patch(f"course_bot.services.manual_deadlines.{n}"))
+                  for n in ("get_or_create_course", "insert_deadline_manual")})
         m["conn"] = m["get_db"].return_value.__enter__.return_value
         m["get_or_create_course"].return_value = 3
         m["insert_deadline_manual"].return_value = 42
@@ -56,10 +58,11 @@ def test_discord_add_ok_and_sanitizes(db):
         username="@here An"), "db")
     m["get_or_create_course"].assert_called_once_with(m["conn"], "CSC 10014")
     args, kwargs = m["insert_deadline_manual"].call_args
-    assert args[:3] == (m["conn"], 3, "Bài @​&role @​everyone 1")
+    assert args[:3] == (m["conn"], 3, "Bài @\u200b&role @\u200beveryone 1")
     assert args[3] == "manual-9999"
     assert args[4].isoformat() == DUE_UTC
-    assert kwargs == {"source_url": "Discord (thêm bởi @​here An)", "added_by": "@​here An"}
+    assert kwargs == {"source_url": "Discord (thêm bởi @\u200bhere An)", "added_by": "@\u200bhere An",
+                      "source": "manual"}
     assert resp["type"] == 4
     assert resp["data"]["allowed_mentions"] == {"parse": []}
     assert resp["data"]["content"].startswith("📌 **Deadline nội bộ mới**\n📚 Môn: **CSC 10014**\n")
@@ -129,12 +132,16 @@ def test_external_add_ok(db):
     assert kwargs == {"source_url": "API bên thứ 3 (Google Form)", "added_by": "Google Form", "source": "external"}
 
 
-def test_external_mon_keeps_inner_spaces_and_mentions(db):
-    """Hành vi hiện tại: không gộp khoảng trắng trong mon, không chặn mention."""
+def test_external_sanitizes_like_discord(db):
+    """Phase 8 (A6): gộp khoảng trắng trong mon và chặn mention như Discord/Web."""
     m = db(E)
-    add_external({"ten": "<@&1> @everyone", "han_chot": "25/12/2026", "mon": "csc  10014"})
-    m["get_or_create_course"].assert_called_once_with(m["conn"], "CSC  10014")
-    assert m["insert_deadline_manual"].call_args[0][2] == "<@&1> @everyone"
+    add_external({"ten": "<@&1> @everyone", "han_chot": "25/12/2026", "mon": "csc  10014",
+                  "nguon": "@here bot"})
+    m["get_or_create_course"].assert_called_once_with(m["conn"], "CSC 10014")
+    args, kwargs = m["insert_deadline_manual"].call_args
+    assert args[2] == "@\u200b&role @\u200beveryone"
+    assert kwargs["added_by"] == "@\u200bhere bot"
+    assert kwargs["source_url"] == "API bên thứ 3 (@\u200bhere bot)"
 
 
 def test_external_defaults_and_generated_id(db):
