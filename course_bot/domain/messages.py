@@ -18,8 +18,8 @@ def sanitize_discord_text(text):
         return ""
     # Lọc bỏ ký tự điều khiển trước
     text = "".join(ch for ch in str(text) if ch.isprintable() or ch in '\n\r\t')
-    text = text.replace("@everyone", "@​everyone").replace("@here", "@​here")
-    text = re.sub(r'<@&(\d+)>', lambda m: '@​&role', text)
+    text = text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+    text = re.sub(r'<@&(\d+)>', lambda m: '@\u200b&role', text)
     return " ".join(text.strip().split())
 
 

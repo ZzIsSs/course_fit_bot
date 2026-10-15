@@ -6,7 +6,7 @@ import pytest
 from course_bot.domain.messages import build_deadline_message, build_event_url, sanitize_discord_text
 from course_bot.domain.reminders import NEW, ONE_DAY, THREE_DAYS
 
-ZWSP = "​"
+ZWSP = "\u200b"
 
 
 # ==================== sanitize_discord_text ====================

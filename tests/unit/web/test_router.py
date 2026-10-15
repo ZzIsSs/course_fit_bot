@@ -276,10 +276,10 @@ def test_create_deadline_blocks_mentions(mocks):
     mocks["insert_deadline_manual"].return_value = 1
     request("POST", "/api/deadlines", {"mon": "@everyone", "ten": "Nộp <@&123> @here",
                                        "han_chot": "25/12/2026", "nguoi_phu_trach": "@everyone An\x00"})
-    mocks["get_or_create_course"].assert_called_once_with(mocks["conn"], "@​EVERYONE")
+    mocks["get_or_create_course"].assert_called_once_with(mocks["conn"], "@\u200bEVERYONE")
     args, kwargs = mocks["insert_deadline_manual"].call_args
-    assert args[2] == "Nộp @​&role @​here"
-    assert kwargs["added_by"] == "@​everyone An"
+    assert args[2] == "Nộp @\u200b&role @\u200bhere"
+    assert kwargs["added_by"] == "@\u200beveryone An"
 
 
 def test_create_deadline_blank_person_uses_default(mocks):
