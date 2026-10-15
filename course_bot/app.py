@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 from course_bot.core.config import load_env
 from course_bot.core.time_utils import LOCAL_TZ
-from course_bot.database import get_db
+from course_bot.db.connection import get_db
 from course_bot.db_queries import (
     get_or_create_course, get_deadline_by_lms_id, insert_deadline,
     update_deadline_notified, update_deadline_discord_info,

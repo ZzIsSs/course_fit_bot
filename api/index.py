@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 
 # Đảm bảo import được package course_bot/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from course_bot.database import get_db
+from course_bot.db.connection import get_db
 from course_bot.integrations.discord.signature import verify_signature
 from course_bot.interactions import handle_interaction
 from course_bot.external_api import verify_api_key, handle_add_deadline

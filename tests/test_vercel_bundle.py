@@ -106,7 +106,7 @@ def test_vercel_bundle_contains_all_imports(entry):
     ("course_bot/app.py", True),
     ("docs/x.md", True),
     ("service_account.json", True),
-    ("course_bot/database.py", False),
+    ("course_bot/db/connection.py", False),
     ("api/index.py", False),
 ])
 def test_ignore_matcher(path, expected):

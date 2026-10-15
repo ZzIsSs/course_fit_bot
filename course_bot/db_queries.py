@@ -7,7 +7,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from course_bot.database import execute, fetch_one, fetch_all
+from course_bot.db.connection import execute, fetch_one, fetch_all
 
 
 # ==================== COURSES ====================
