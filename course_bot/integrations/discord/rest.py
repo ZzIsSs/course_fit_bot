@@ -176,7 +176,12 @@ def get_reaction_users(token, channel_id, message_id, emoji="✅"):
     """Lấy danh sách user đã react emoji vào tin nhắn."""
     encoded_emoji = url_quote(emoji)
     url = f"{DISCORD_API_BASE}/channels/{channel_id}/messages/{message_id}/reactions/{encoded_emoji}"
-    response = requests.get(url, headers=get_headers(token))
+    # check_completions gọi hàm này liên tục cho mọi deadline đang theo dõi,
+    # nên dễ chạm rate limit của route reactions: chờ retry_after rồi thử lại.
+    response = _request_with_retry("GET", url, headers=get_headers(token))
+    if response is None:
+        logging.error("Failed to get reactions: không nhận được phản hồi sau khi thử lại")
+        return []
     if response.status_code == 200:
         return response.json()
     else:

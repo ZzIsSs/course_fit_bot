@@ -9,6 +9,7 @@ from course_bot.integrations.discord.rest import (
     get_channel_messages,
     bulk_delete_messages,
     deduplicate_channel_messages,
+    get_reaction_users,
     _request_with_retry
 )
 
@@ -191,6 +192,37 @@ def test_rate_limit_retry():
             assert mock_sleep.called
 
     print("=> test_rate_limit_retry: PASSED!")
+
+
+def test_get_reaction_users_retries_on_429():
+    """get_reaction_users chờ retry_after và thử lại khi bị rate limit, không trả [] ngay."""
+    resp_429 = MagicMock()
+    resp_429.status_code = 429
+    resp_429.json.return_value = {"retry_after": 0.703, "global": False}
+
+    resp_200 = MagicMock()
+    resp_200.status_code = 200
+    resp_200.json.return_value = [{"id": "1", "username": "alice"}]
+
+    with patch("requests.request", side_effect=[resp_429, resp_200]) as mock_req:
+        with patch("time.sleep") as mock_sleep:
+            users = get_reaction_users("tok", "chan", "msg")
+
+    assert users == [{"id": "1", "username": "alice"}]
+    assert mock_req.call_count == 2
+    mock_sleep.assert_called_once()
+    assert mock_sleep.call_args[0][0] >= 0.703
+
+
+def test_get_reaction_users_gives_up_after_retries():
+    """Hết lượt retry (toàn 429) thì trả [] như trước, không raise."""
+    resp_429 = MagicMock()
+    resp_429.status_code = 429
+    resp_429.json.return_value = {"retry_after": 0.01}
+
+    with patch("requests.request", return_value=resp_429):
+        with patch("time.sleep"):
+            assert get_reaction_users("tok", "chan", "msg") == []
 
 
 if __name__ == "__main__":
