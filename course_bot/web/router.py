@@ -17,8 +17,12 @@ import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+from course_bot.core.logging_setup import configure_logging
 from course_bot.web.http_utils import read_body, send_json, set_cors_headers
 from course_bot.web.routes import dashboard, discord_interactions, external
+
+# Entry point của runtime Vercel: cấu hình logging một lần khi module được load.
+configure_logging()
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 

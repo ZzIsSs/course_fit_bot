@@ -24,6 +24,9 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from course_bot.jobs.dedup import run_deduplicate_messages
+from course_bot.core.logging_setup import configure_logging
+
+configure_logging()
 
 
 def main():

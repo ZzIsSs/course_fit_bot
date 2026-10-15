@@ -5,6 +5,8 @@ Lưới an toàn cho đợt refactor cấu trúc thư mục (docs/architecture/r
 di chuyển file mà quên sửa import sẽ fail ngay tại đây thay vì lúc cron chạy.
 """
 import importlib
+import subprocess
+import sys
 import os
 import pkgutil
 
@@ -51,3 +53,20 @@ def test_api_has_only_index():
     api_dir = os.path.join(ROOT, "api")
     entries = sorted(n for n in os.listdir(api_dir) if n.endswith(".py"))
     assert entries == ["index.py"]
+
+
+@pytest.mark.parametrize("module, configured", [
+    ("course_bot.core.config", False),   # import thư viện không được đụng root logger
+    ("course_bot.jobs.notify", False),
+    ("api.index", True),                 # entry Vercel tự cấu hình
+])
+def test_logging_configured_only_by_entry_points(module, configured):
+    """Chạy trong process mới vì pytest đã gắn handler vào root logger."""
+    code = (
+        "import logging, importlib; "
+        f"importlib.import_module({module!r}); "
+        "print(len(logging.getLogger().handlers))"
+    )
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    assert (int(out.stdout.strip()) > 0) is configured

@@ -10,6 +10,9 @@ import os, sys, requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from course_bot.core.config import load_env
+from course_bot.core.logging_setup import configure_logging
+
+configure_logging()
 
 env = load_env()
 BOT_TOKEN = env['bot_token'] if env else os.environ.get('DISCORD_BOT_TOKEN')

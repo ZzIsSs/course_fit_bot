@@ -1,11 +1,8 @@
 import os
 import logging
 
-from course_bot.core.logging_setup import configure_logging
-
-# Giữ hành vi cũ: cấu hình logging ngay khi import config.
-# Phase 6/7 sẽ chuyển lời gọi này sang cli.py / web/router.py.
-configure_logging()
+# Không cấu hình logging khi import: entry point gọi configure_logging()
+# (course_bot/cli.py cho cron/CLI, course_bot/web/router.py cho Vercel).
 
 # ==================== HẰNG SỐ ====================
 
