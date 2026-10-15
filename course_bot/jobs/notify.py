@@ -31,9 +31,9 @@ from course_bot.domain.course_naming import slugify_channel_name, extract_displa
 from course_bot.domain.semester import extract_semester_index
 from course_bot.integrations.moodle.ics_feed import fetch_and_parse_events
 from course_bot.integrations.moodle.webservice import get_site_info, get_enrolled_courses
-from course_bot.event_tracker import check_completions
-from course_bot.announcement_tracker import check_moodle_updates
-from course_bot.moodle_deadline_crawler import crawl_moodle_deadlines
+from course_bot.jobs.completions import check_completions
+from course_bot.jobs.announcements import check_moodle_updates
+from course_bot.jobs.crawl_deadlines import crawl_moodle_deadlines
 from course_bot.integrations.notion.client import NotionSync
 from course_bot.integrations.google_calendar.client import GoogleCalendarSync
 
