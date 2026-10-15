@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ActiveTab, ViewMode, FilterStatus, Deadline, Course, DashboardStats, Announcement, ToastMessage } from '@/shared/types';
-import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion, isAbortError } from '@/shared/api/client';
+import React, { useState } from 'react';
+import { ActiveTab, ViewMode } from '@/shared/types';
+import { useToasts } from '@/shared/hooks/useToasts';
+import { useTheme } from '@/app/useTheme';
+import { useDashboardData } from '@/app/useDashboardData';
+import { useDeadlineFilters } from '@/features/deadlines/useDeadlineFilters';
 import { Header } from '@/app/layout/Header';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { BottomNav } from '@/app/layout/BottomNav';
@@ -14,265 +17,40 @@ import { AddDeadlineModal } from '@/features/deadlines/AddDeadlineModal';
 import { CoursesView } from '@/features/courses/CoursesView';
 import { AnnouncementsView } from '@/features/announcements/AnnouncementsView';
 import { SettingsView } from '@/features/settings/SettingsView';
-import { getCountdown } from '@/shared/utils/dateUtils';
-import { Calendar, RefreshCw, AlertCircle } from 'lucide-react';
+import { Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 
 export const App: React.FC = () => {
   // Navigation & View States
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Theme State
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('course_fit_theme');
-      if (saved) return saved === 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    } catch {
-      return false;
-    }
-  });
-
-  // Data States
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    total_deadlines: 0,
-    completed_deadlines: 0,
-    pending_deadlines: 0,
-    completion_rate: 0,
-    urgent_24h: 0,
-    upcoming_3d: 0,
-    overdue: 0,
-    total_courses: 0,
-  });
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  // Toast State
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const addToast = useCallback((type: 'success' | 'error' | 'info' | 'warning', message: string, title?: string) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    setToasts((prev) => [...prev, { id, type, message, title }]);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  // Sync Dark mode with DOM
-  useEffect(() => {
-    try {
-      if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('course_fit_theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('course_fit_theme', 'light');
-      }
-    } catch {
-      // Ignored in strict security environments
-    }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
-
-  // Load Data with AbortController to prevent memory leaks.
-  // Trả về true khi cả 4 request đều thành công. Request nào lỗi thì giữ nguyên
-  // dữ liệu cũ của phần đó và hiện banner + toast lỗi.
-  const loadData = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
-    setFetchError(null);
-    try {
-      const results = await Promise.allSettled([
-        getCourses(signal),
-        getDeadlines(undefined, signal),
-        getStats(signal),
-        getAnnouncements(signal),
-      ]);
-      const [coursesData, deadlinesData, statsData, announcementsData] = results;
-
-      if (coursesData.status === 'fulfilled') setCourses(coursesData.value);
-      if (deadlinesData.status === 'fulfilled') setDeadlines(deadlinesData.value);
-      if (statsData.status === 'fulfilled') setStats(statsData.value);
-      if (announcementsData.status === 'fulfilled') setAnnouncements(announcementsData.value);
-
-      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-      if (rejected.length === 0) return true;
-      // Bị hủy (unmount / StrictMode) thì không báo lỗi
-      const failure = rejected.find((r) => !isAbortError(r.reason));
-      if (!failure) return false;
-
-      const msg = failure.reason instanceof Error ? failure.reason.message : 'Không thể tải dữ liệu từ máy chủ';
-      setFetchError(msg);
-      addToast('error', msg, 'Lỗi kết nối');
-      return false;
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [addToast]);
-
-  // Initial Load
-  useEffect(() => {
-    const controller = new AbortController();
-    loadData(controller.signal);
-    return () => controller.abort();
-  }, [loadData]);
-
-  // Manual Refresh
-  const handleManualRefresh = async () => {
-    setRefreshing(true);
-    const ok = await loadData();
-    if (ok) {
-      addToast('success', 'Dữ liệu đã được làm mới thành công!', 'Đồng bộ hoàn tất');
-    }
-  };
-
-  // Optimistic Toggle Complete (0ms latency!)
-  const handleToggleComplete = async (id: number, currentCompleted: boolean) => {
-    const target = deadlines.find((d) => d.deadlines_id === id);
-    if (!target) return;
-
-    const newCompleted = !currentCompleted;
-
-    // 1. Optimistic Update UI ngay lập tức
-    setDeadlines((prev) =>
-      prev.map((d) =>
-        d.deadlines_id === id
-          ? {
-              ...d,
-              completed: newCompleted,
-              completed_by: newCompleted ? 'Bạn' : null,
-            }
-          : d
-      )
-    );
-
-    // Cập nhật stats tạm thời
-    setStats((prev) => {
-      const completedCount = newCompleted ? prev.completed_deadlines + 1 : Math.max(0, prev.completed_deadlines - 1);
-      const pendingCount = newCompleted ? Math.max(0, prev.pending_deadlines - 1) : prev.pending_deadlines + 1;
-      const rate = prev.total_deadlines > 0 ? (completedCount / prev.total_deadlines) * 100 : 0;
-      return {
-        ...prev,
-        completed_deadlines: completedCount,
-        pending_deadlines: pendingCount,
-        completion_rate: rate,
-      };
-    });
-
-    // 2. Gửi request Backend ngầm
-    const result = await toggleDeadlineCompletion(id, newCompleted);
-
-    if (!result.ok) {
-      // 3. Rollback nếu có lỗi mạng
-      setDeadlines((prev) =>
-        prev.map((d) =>
-          d.deadlines_id === id
-            ? { ...d, completed: currentCompleted, completed_by: target.completed_by }
-            : d
-        )
-      );
-      addToast('error', result.error || 'Không thể đồng bộ trạng thái lên cơ sở dữ liệu', 'Lỗi cập nhật');
-    } else {
-      addToast(
-        'success',
-        newCompleted
-          ? `Đã hoàn thành "${target.deadline_name}". Lịch Google & Notion đã được cập nhật!`
-          : `Đã mở lại "${target.deadline_name}".`,
-        newCompleted ? 'Hoàn tất bài tập ✅' : 'Đã cập nhật'
-      );
-    }
-  };
-
-  // Create Manual Deadline
-  const handleCreateDeadline = async (data: {
-    mon: string;
-    ten: string;
-    han_chot: string;
-    nguoi_phu_trach?: string;
-    ghi_chu_url?: string;
-  }): Promise<boolean> => {
-    const res = await createManualDeadline(data);
-    if (!res.ok) {
-      addToast('error', res.error || 'Lỗi khi tạo deadline', 'Thất bại');
-      return false;
-    }
-
-    addToast('success', `Đã thêm deadline "${data.ten}". Bot sẽ tự động thông báo trên Discord!`, 'Thành công 🎉');
-    await loadData();
-    return true;
-  };
-
-  // Filtered Deadlines
-  const filteredDeadlines = useMemo(() => {
-    return (deadlines ?? []).filter((d) => {
-      // 1. Lọc theo search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = d.deadline_name?.toLowerCase().includes(q);
-        const matchCourse = d.course_name?.toLowerCase().includes(q);
-        if (!matchName && !matchCourse) return false;
-      }
-
-      // 2. Lọc theo Course
-      if (selectedCourse && d.course_name !== selectedCourse) {
-        return false;
-      }
-
-      // 3. Lọc theo Status
-      const countdown = getCountdown(d.due_time);
-      switch (filterStatus) {
-        case 'pending':
-          return !d.completed;
-        case 'urgent':
-          return !d.completed && countdown.isUrgent;
-        case 'completed':
-          return d.completed;
-        case 'overdue':
-          return !d.completed && countdown.isOverdue;
-        case 'all':
-        default:
-          return true;
-      }
-    });
-  }, [deadlines, searchQuery, selectedCourse, filterStatus]);
-
-  // Counts for tabs
-  const counts = useMemo(() => {
-    let pending = 0;
-    let urgent = 0;
-    let completed = 0;
-    let overdue = 0;
-
-    (deadlines ?? []).forEach((d) => {
-      if (d.completed) {
-        completed++;
-      } else {
-        pending++;
-        const c = getCountdown(d.due_time);
-        if (c.isOverdue) overdue++;
-        else if (c.isUrgent) urgent++;
-      }
-    });
-
-    return {
-      all: deadlines.length,
-      pending,
-      urgent,
-      completed,
-      overdue,
-    };
-  }, [deadlines]);
+  const { toasts, addToast, dismissToast } = useToasts();
+  const { isDarkMode, toggleTheme } = useTheme();
+  const {
+    courses,
+    deadlines,
+    stats,
+    announcements,
+    loading,
+    refreshing,
+    fetchError,
+    refresh: handleManualRefresh,
+    toggleComplete: handleToggleComplete,
+    createDeadline: handleCreateDeadline,
+  } = useDashboardData(addToast);
+  const {
+    filterStatus,
+    setFilterStatus,
+    searchQuery,
+    setSearchQuery,
+    selectedCourse,
+    setSelectedCourse,
+    filteredDeadlines,
+    counts,
+  } = useDeadlineFilters(deadlines);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-canvas-dark text-slate-900 dark:text-slate-100 transition-colors">

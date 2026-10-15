@@ -65,7 +65,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | `course_bot/domain/` | Logic thuần, không I/O: `course_naming.py` (tách mã/tên môn, tên kênh), `semester.py` (tính học kỳ). Việc tải và parse `.ics` nằm ở `integrations/moodle/ics_feed.py`. |
 | `course_bot/web/` | Tầng HTTP cho Vercel: `router.py` (điều hướng `/api/*`), `http_utils.py` (JSON, CORS), `routes/dashboard.py` (API cho Web Dashboard), `routes/discord_interactions.py` (Slash Commands), `routes/external.py` (thêm deadline cho bên thứ 3, xác thực `X-API-Key`). Không import `jobs/`, Notion hay Google Calendar. |
 | `api/index.py` | Entry point duy nhất của Vercel: chỉ re-export `handler` từ `course_bot/web/router.py`. |
-| `frontend/` | Web Dashboard (Vite + React + TS + Tailwind). |
+| `frontend/` | Web Dashboard (Vite + React + TS + Tailwind). Trong `frontend/src/`: `app/` (`App.tsx`, `main.tsx`, `layout/` Header/Sidebar/BottomNav, hook `useDashboardData` và `useTheme`), `features/<tên>/` (giao diện + hook dữ liệu của từng tab, ví dụ `deadlines/useDeadlines.ts`), `shared/` (`ui/`, `api/client.ts`, `types/`, `utils/`, `hooks/`). Import khác thư mục dùng alias `@/` (khai báo ở cả `tsconfig.json` và `vite.config.ts`). |
 | `migrations/` | SQL tạo và nâng cấp schema (chạy theo thứ tự số). |
 | `scripts/` | Công cụ phụ: đăng ký slash command, chạy server local, setup Termux, đổi tên kênh, gán category, dọn tin nhắn... |
 | `tests/` | Unit test (pytest) và các script debug thủ công. |
