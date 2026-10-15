@@ -16,20 +16,9 @@ from course_bot.db.repositories.deadlines import (
 from course_bot.core.time_utils import ensure_tz, parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
 from course_bot.integrations.discord.signature import verify_signature
+from course_bot.domain.messages import sanitize_discord_text
 
-import re
 import logging
-
-
-def sanitize_discord_text(text):
-    """Khử nguy cơ Mention Injection (@everyone, @here, role ping) và ký tự rác."""
-    if not text:
-        return ""
-    # Lọc bỏ ký tự điều khiển trước
-    text = "".join(ch for ch in str(text) if ch.isprintable() or ch in '\n\r\t')
-    text = text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
-    text = re.sub(r'<@&(\d+)>', lambda m: '@\u200b&role', text)
-    return " ".join(text.strip().split())
 
 
 def handle_http(body, signature, timestamp, database_url):

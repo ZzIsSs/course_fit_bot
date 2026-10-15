@@ -1,9 +1,7 @@
 import logging
-import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from course_bot.core.config import load_env
-from course_bot.core.time_utils import LOCAL_TZ
 from course_bot.db.connection import get_db
 from course_bot.db.repositories.courses import (
     get_or_create_course,
@@ -30,28 +28,14 @@ from course_bot.integrations.discord.rest import (
 )
 from course_bot.domain.course_naming import slugify_channel_name
 from course_bot.domain.semester import extract_semester_index
+from course_bot.domain.reminders import decide_reminder, NEW, NOTIFIED_FIELDS
+from course_bot.domain.messages import build_event_url, build_deadline_message
 from course_bot.integrations.moodle.ics_feed import fetch_and_parse_events
 from course_bot.jobs.completions import check_completions
 from course_bot.jobs.announcements import check_moodle_updates
 from course_bot.jobs.crawl_deadlines import crawl_moodle_deadlines
 from course_bot.integrations.notion.client import NotionSync
 from course_bot.integrations.google_calendar.client import GoogleCalendarSync
-
-
-# ==================== TIỆN ÍCH ====================
-
-def _build_event_url(uid):
-    """Tạo URL đến sự kiện trên Moodle từ UID."""
-    base_url = "https://courses.fit.hcmus.edu.vn/calendar/view.php?view=upcoming"
-    id_match = re.search(r'^(\d+)@', uid)
-    if id_match:
-        return (
-            f"https://courses.fit.hcmus.edu.vn/calendar/view.php"
-            f"?view=day&course=1&time=upcoming#event_{id_match.group(1)}"
-        )
-    return base_url
-
-
 from course_bot.core.time_utils import ensure_tz as _ensure_tz
 
 
@@ -137,24 +121,14 @@ def run_main_bot():
             if not deadline:
                 # Tạo course và deadline mới trong DB
                 course_id = get_or_create_course(conn, event['subject'])
-                event_url = _build_event_url(eid)
+                event_url = build_event_url(eid)
                 insert_deadline(
                     conn, course_id, event['summary'],
                     eid, event['deadline'], event_url
                 )
                 deadline = get_deadline_by_lms_id(conn, eid)
 
-            time_left = event['deadline'] - now
-            if time_left.total_seconds() < 0:
-                continue
-
-            msg_type = None
-            if not deadline['notified_new']:
-                msg_type = "NEW"
-            elif time_left <= timedelta(days=3) and not deadline['reminded_3d']:
-                msg_type = "3_DAYS"
-            elif time_left <= timedelta(days=1) and not deadline['reminded_1d']:
-                msg_type = "1_DAY"
+            msg_type = decide_reminder(deadline, event['deadline'], now)
 
             if msg_type:
                 # Lấy display_name từ DB (nếu đã có từ Moodle sync)
@@ -189,20 +163,12 @@ def run_main_bot():
                 if eid.startswith('manual-'):
                     event_url = deadline.get('source_url', '')
                 else:
-                    event_url = _build_event_url(eid)
-                deadline_local = event['deadline'].astimezone(LOCAL_TZ).strftime('%d/%m/%Y %H:%M')
-                completion_hint = "\n\n✅ *React ✅ vào tin nhắn này khi đã hoàn thành!*"
-
-                if msg_type == "NEW":
-                    content = f"@everyone 🚨 **DEADLINE MỚI** 🚨\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}{completion_hint}"
-                elif msg_type == "3_DAYS":
-                    content = f"@everyone ⚠️ **NHẮC NHỞ: CÒN 3 NGÀY** ⚠️\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}{completion_hint}"
-                elif msg_type == "1_DAY":
-                    content = f"@everyone 🆘 **KHẨN CẤP: CÒN 24 GIỜ** 🆘\n\n📌 **Môn:** {event['subject']}\n📝 **Nội dung:** {event['summary']}\n⏰ **Hạn chót:** {deadline_local}\n🔗 **Xem:** {event_url}{completion_hint}"
+                    event_url = build_event_url(eid)
+                content = build_deadline_message(
+                    msg_type, event['subject'], event['summary'], event['deadline'], event_url)
 
                 # Cập nhật trạng thái thông báo trong DB
-                field_map = {"NEW": "notified_new", "3_DAYS": "reminded_3d", "1_DAY": "reminded_1d"}
-                update_deadline_notified(conn, deadline['deadlines_id'], field_map[msg_type])
+                update_deadline_notified(conn, deadline['deadlines_id'], NOTIFIED_FIELDS[msg_type])
 
                 msg_result = send_message(bot_token, target_chan_id, content)
 
@@ -212,7 +178,7 @@ def run_main_bot():
 
                     # Create scheduled event for NEW deadlines only
                     sched_event_id = None
-                    if msg_type == "NEW":
+                    if msg_type == NEW:
                         sched_event = create_scheduled_event(bot_token, guild_id, event)
                         if sched_event:
                             sched_event_id = sched_event['id']
@@ -230,7 +196,7 @@ def run_main_bot():
                     conn.commit()
 
                     # ===== Đồng bộ lên Notion Todo List (chỉ deadline MỚI) =====
-                    if notion and msg_type == "NEW":
+                    if notion and msg_type == NEW:
                         try:
                             source = "Discord" if eid.startswith('manual-') else "Moodle"
                             notion.add_deadline(
@@ -245,7 +211,7 @@ def run_main_bot():
                             logging.warning(f"Notion sync error (bỏ qua để không ảnh hưởng bot): {e}")
 
                     # ===== Đồng bộ lên Google Calendar (chỉ deadline MỚI) =====
-                    if gcal and msg_type == "NEW":
+                    if gcal and msg_type == NEW:
                         try:
                             source = "Discord" if eid.startswith('manual-') else "Moodle"
                             gcal.add_deadline(
