@@ -1,7 +1,7 @@
 """Xử lý request thêm deadline từ bên thứ 3 (Zapier, Google Form/Apps Script, script ngoài...).
 
 Xác thực bằng API key tĩnh (header X-API-Key) — khác cơ chế chữ ký Discord
-dùng cho api/interactions.py.
+dùng cho /api/interactions. Router gọi handle_http() cho POST /api/add_deadline.
 """
 import os
 import hmac
@@ -26,6 +26,13 @@ def verify_api_key(provided_key):
     if not EXTERNAL_API_KEY or not provided_key:
         return False
     return hmac.compare_digest(provided_key, EXTERNAL_API_KEY)
+
+
+def handle_http(body, api_key, database_url):
+    """POST /api/add_deadline: kiểm tra X-API-Key rồi ghi deadline. Trả về (status, payload)."""
+    if not verify_api_key(api_key):
+        return 401, {"ok": False, "error": "API key không hợp lệ hoặc thiếu."}
+    return handle_add_deadline(body, database_url)
 
 
 def handle_add_deadline(body_text, database_url):

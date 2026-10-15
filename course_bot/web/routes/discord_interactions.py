@@ -2,8 +2,9 @@
 
 Module này dispatch lệnh tương ứng. Xác thực chữ ký Discord nằm ở
 course_bot/integrations/discord/signature.py.
-Được gọi từ api/interactions.py (Vercel entry point).
+Router gọi handle_http() cho POST /api/interactions.
 """
+import json
 from datetime import datetime, timezone
 
 from course_bot.db.connection import get_db
@@ -14,6 +15,7 @@ from course_bot.db.repositories.deadlines import (
 )
 from course_bot.core.time_utils import ensure_tz, parse_due_time
 from course_bot.core.time_utils import LOCAL_TZ
+from course_bot.integrations.discord.signature import verify_signature
 
 import re
 import logging
@@ -28,6 +30,23 @@ def sanitize_discord_text(text):
     text = text.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
     text = re.sub(r'<@&(\d+)>', lambda m: '@\u200b&role', text)
     return " ".join(text.strip().split())
+
+
+def handle_http(body, signature, timestamp, database_url):
+    """POST /api/interactions: xác thực chữ ký rồi xử lý PING hoặc slash command.
+
+    Trả về (status, payload). payload là None khi chữ ký sai: router trả 401
+    không body và không CORS, đúng như Discord kỳ vọng.
+    """
+    if not verify_signature(signature, timestamp, body):
+        return 401, None
+
+    try:
+        interaction = json.loads(body)
+        result = {"type": 1} if interaction.get("type") == 1 else handle_interaction(interaction, database_url)
+    except Exception:
+        result = {"type": 4, "data": {"content": "⚠️ Đã xảy ra lỗi nội bộ khi xử lý lệnh.", "flags": 64}}
+    return 200, result
 
 
 def handle_interaction(interaction, database_url):

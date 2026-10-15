@@ -17,18 +17,18 @@ from api.index import handler
 
 # Tên được mock -> module đang giữ tên đó (cập nhật khi di chuyển code).
 TARGETS = {
-    "get_db": "course_bot.web.router",
-    "get_courses_with_deadline_counts": "course_bot.web.router",
-    "get_dashboard_stats": "course_bot.web.router",
-    "get_all_deadlines_with_course_details": "course_bot.web.router",
-    "get_recent_announcements_with_course": "course_bot.web.router",
-    "get_or_create_course": "course_bot.web.router",
-    "insert_deadline_manual": "course_bot.web.router",
-    "toggle_deadline_completed": "course_bot.web.router",
-    "verify_signature": "course_bot.web.router",
-    "handle_interaction": "course_bot.web.router",
-    "verify_api_key": "course_bot.web.router",
-    "handle_add_deadline": "course_bot.web.router",
+    "get_db": "course_bot.web.routes.dashboard",
+    "get_courses_with_deadline_counts": "course_bot.web.routes.dashboard",
+    "get_dashboard_stats": "course_bot.web.routes.dashboard",
+    "get_all_deadlines_with_course_details": "course_bot.web.routes.dashboard",
+    "get_recent_announcements_with_course": "course_bot.web.routes.dashboard",
+    "get_or_create_course": "course_bot.web.routes.dashboard",
+    "insert_deadline_manual": "course_bot.web.routes.dashboard",
+    "toggle_deadline_completed": "course_bot.web.routes.dashboard",
+    "verify_signature": "course_bot.web.routes.discord_interactions",
+    "handle_interaction": "course_bot.web.routes.discord_interactions",
+    "verify_api_key": "course_bot.web.routes.external",
+    "handle_add_deadline": "course_bot.web.routes.external",
 }
 
 DATABASE_URL = os.environ["DATABASE_URL"]
