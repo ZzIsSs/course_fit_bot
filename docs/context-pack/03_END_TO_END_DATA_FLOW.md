@@ -1,5 +1,7 @@
 # PHẦN 3: LUỒNG DỮ LIỆU TỔNG THỂ (END-TO-END DATA FLOW)
 
+> **Cập nhật 2026-10-16:** đường dẫn và cây thư mục trong tài liệu này đã được cập nhật theo cấu trúc sau đợt tái cấu trúc (`course_bot/`, `frontend/src/{app,features,shared}`). Xem `docs/architecture/refactoring-blueprint.md`.
+
 > **File:** `03_END_TO_END_DATA_FLOW.md`  
 > **Ngữ cảnh sử dụng:** Mô tả chi tiết cách dữ liệu di chuyển từ các điểm bắt đầu (Entry points), qua tầng xử lý nghiệp vụ, đến cơ sở dữ liệu và các hệ sinh thái bên ngoài.
 
@@ -22,17 +24,17 @@ flowchart TD
     end
 
     subgraph S3["3. Core Business Services"]
-        App["src/app.py (Master Orchestrator)"]
-        MoodleParser["src/moodle_parser.py (ICS & Semester Parser)"]
-        MoodleTracker["src/announcement_tracker.py (Material/Forum Crawler)"]
-        Interactions["src/interactions.py (Slash Command Dispatcher)"]
-        External["src/external_api.py (HMAC Verifier)"]
-        EventTracker["src/event_tracker.py (Reaction Watcher)"]
+        App["course_bot/jobs/ (Master Orchestrator)"]
+        MoodleParser["course_bot/integrations/moodle/ics_feed.py (ICS & Semester Parser)"]
+        MoodleTracker["course_bot/services/announcement_tracker.py (Material/Forum Crawler)"]
+        Interactions["course_bot/web/routes/discord_interactions.py (Slash Command Dispatcher)"]
+        External["course_bot/web/routes/external.py (HMAC Verifier)"]
+        EventTracker["course_bot/services/completion_tracker.py (Reaction Watcher)"]
     end
 
     subgraph S4["4. Persistence & DAO"]
-        DAO["src/db_queries.py (SQL DAO)"]
-        DB["src/database.py (PostgreSQL / Supabase)"]
+        DAO["course_bot/db/repositories/ (SQL DAO)"]
+        DB["course_bot/db/connection.py (PostgreSQL / Supabase)"]
     end
 
     subgraph S5["5. External Integration Targets"]
@@ -68,13 +70,13 @@ flowchart TD
 
 ## 2. Chi tiết 4 luồng dữ liệu nghiệp vụ chính
 
-### Luồng 1: Chu trình Cron tự động quét và thông báo (`main.py` -> `src/app.py`)
+### Luồng 1: Chu trình Cron tự động quét và thông báo (`main.py` -> `course_bot/jobs/`)
 1. **Trigger:** GitHub Actions kích hoạt `python main.py` mỗi 30 phút.
 2. **Đối soát phản hồi (Reaction Check):**
-   * `src/event_tracker.py` gọi Discord API quét reactions `✅` trên các tin nhắn deadline đang mở.
+   * `course_bot/services/completion_tracker.py` gọi Discord API quét reactions `✅` trên các tin nhắn deadline đang mở.
    * Nếu có người dùng bấm hoàn thành: Cập nhật `completed = true` trong DB, đổi trạng thái Discord Event sang `COMPLETED`, đánh dấu Done trên Notion và đổi màu xanh lá kèm tiền tố `✅ [XONG]` trên Google Calendar.
 3. **Thu thập dữ liệu Moodle:**
-   * Tải nội dung iCalendar từ `MOODLE_CALENDAR_URL` -> `src/moodle_parser.py` bóc tách từng sự kiện (UID, Tên bài, Hạn chót, Mã môn, Học kỳ).
+   * Tải nội dung iCalendar từ `MOODLE_CALENDAR_URL` -> `course_bot/integrations/moodle/ics_feed.py` bóc tách từng sự kiện (UID, Tên bài, Hạn chót, Mã môn, Học kỳ).
    * Lấy các deadline được thêm thủ công gần đây từ database (`get_pending_manual_deadlines`).
 4. **Phân loại & Kiểm tra trạng thái thông báo:**
    * So sánh với bảng `deadlines`:
@@ -85,14 +87,14 @@ flowchart TD
 ### Luồng 2: Xử lý lệnh tương tác Discord (Slash Commands)
 1. **Trigger:** Người dùng gõ lệnh `/add_deadline` hoặc `/deadline` trên Discord.
 2. **Gateway:** Discord gửi webhook POST tới `https://domain.vercel.app/api/interactions`.
-3. **Xác thực mật mã:** `src/interactions.py` sử dụng thư viện `pynacl` xác thực chữ ký Ed25519 bằng `DISCORD_PUBLIC_KEY`.
+3. **Xác thực mật mã:** `course_bot/web/routes/discord_interactions.py` sử dụng thư viện `pynacl` xác thực chữ ký Ed25519 bằng `DISCORD_PUBLIC_KEY`.
 4. **Xử lý lệnh:**
    * Với `/add_deadline`: Bóc tách tên môn, tên bài và hạn chót (hỗ trợ tự nhận diện mã môn nếu đang chat trong kênh môn đó). Ghi dữ liệu vào database với `source = 'manual'`, trả về phản hồi công khai xác nhận. Bot sẽ gửi thông báo đầy đủ trong lượt cron kế tiếp.
    * Với `/deadline`: Truy vấn các deadline sắp tới gần nhất và trả về tin nhắn ephemeral (chỉ người dùng thấy).
 
 ### Luồng 3: Webhook bên thứ 3 (`api/add_deadline.py`)
 1. **Trigger:** Google Forms (Apps Script) hoặc Zapier gửi POST request JSON chứa thông tin bài tập.
-2. **Bảo mật:** `src/external_api.py` kiểm tra header `X-API-Key` với `EXTERNAL_API_KEY` qua thuật toán `hmac.compare_digest`.
+2. **Bảo mật:** `course_bot/web/routes/external.py` kiểm tra header `X-API-Key` với `EXTERNAL_API_KEY` qua thuật toán `hmac.compare_digest`.
 3. **Lưu trữ:** Lưu vào PostgreSQL với mã định danh `lms_deadlines_id = external-{uuid}`, cờ `source = 'external'`, chống ghi đè/trùng lặp bằng câu lệnh `ON CONFLICT DO NOTHING`.
 
 ### Luồng 4: Web Dashboard Quản trị (`frontend/src/`)

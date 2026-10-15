@@ -1,5 +1,7 @@
 # Mục 3: Tự động chia Thread thảo luận + Tự động tổ chức kênh theo Kỳ học
 
+> **Lưu ý (2026-10-16):** đây là tài liệu kế hoạch lịch sử. Đường dẫn bên dưới (`src/...`) là cấu trúc *trước* đợt tái cấu trúc; vị trí hiện tại xem `docs/architecture/refactoring-blueprint.md` (mục 2.1).
+
 > Tổng hợp toàn bộ hướng triển khai đã bàn cho **Mục 3 — Tự động chia Thread để thảo luận bài tập** trong `ROADMAP.md`, mở rộng thêm phần tự động tổ chức kênh vào đúng category "kì học" phát sinh trong quá trình triển khai thực tế.
 >
 > ⚠️ Lưu ý số migration: trong lúc trao đổi có 2 file cùng bị đánh số `003`. File này **chuẩn hoá lại thứ tự đúng**: `003` = thread, `004` = category. Nếu Nguyên đã lỡ tạo file trùng số ở máy, đổi tên lại theo đúng thứ tự dưới đây trước khi chạy.

@@ -1,5 +1,7 @@
 # 📋 Tích hợp Notion Todo List — Kế hoạch & Tiến độ
 
+> **Cập nhật 2026-10-16:** đường dẫn và cây thư mục trong tài liệu này đã được cập nhật theo cấu trúc sau đợt tái cấu trúc (`course_bot/`, `frontend/src/{app,features,shared}`). Xem `docs/architecture/refactoring-blueprint.md`.
+
 > **Ngày bắt đầu:** 16/09/2026
 > **Trạng thái:** 🟢 Bước 2-5 đã hoàn thành — Chờ Nguyên test local (Bước 6)
 
@@ -41,12 +43,12 @@ Moodle (ICS) ──► Bot (GitHub Actions) ──┬──► Discord (thông b
 
 ### Bước 2 — Cấu hình biến môi trường 🤖 ✅
 - [x] Thêm `NOTION_TOKEN` và `NOTION_DATABASE_ID` vào `.env`
-- [x] Cập nhật `src/config.py` — đọc 2 biến mới (optional)
+- [x] Cập nhật `course_bot/core/config.py` — đọc 2 biến mới (optional)
 
 ---
 
 ### Bước 3 — Code module Notion 🤖 ✅
-- [x] Tạo file mới `src/notion_sync.py`
+- [x] Tạo file mới `course_bot/integrations/notion/client.py`
   - [x] `__init__(token, database_id)` — Khởi tạo kết nối
   - [x] `find_page_by_lms_id(lms_id)` — Tìm task tránh trùng lặp
   - [x] `add_deadline(name, course, deadline, url, source)` — Thêm deadline mới
@@ -57,11 +59,11 @@ Moodle (ICS) ──► Bot (GitHub Actions) ──┬──► Discord (thông b
 ---
 
 ### Bước 4 — Tích hợp vào luồng chính 🤖 ✅
-- [x] Sửa `src/app.py`
+- [x] Sửa `course_bot/jobs/`
   - [x] Import `NotionSync`
   - [x] Khởi tạo `NotionSync` trong `run_main_bot()` (nếu có token)
   - [x] Gọi `notion.add_deadline()` sau khi gửi Discord thành công
-- [x] Sửa `src/event_tracker.py`
+- [x] Sửa `course_bot/services/completion_tracker.py`
   - [x] Gọi `notion.mark_completed()` khi phát hiện user react ✅
 
 ---
@@ -115,10 +117,10 @@ Moodle (ICS) ──► Bot (GitHub Actions) ──┬──► Discord (thông b
 
 | File | Hành động | Mô tả |
 |------|-----------|-------|
-| `src/notion_sync.py` | **TẠO MỚI** | Module giao tiếp Notion API |
-| `src/config.py` | Sửa | Thêm đọc biến `NOTION_TOKEN`, `NOTION_DATABASE_ID` |
-| `src/app.py` | Sửa | Gọi `notion.add_deadline()` khi có deadline mới |
-| `src/event_tracker.py` | Sửa | Gọi `notion.mark_completed()` khi react ✅ |
+| `course_bot/integrations/notion/client.py` | **TẠO MỚI** | Module giao tiếp Notion API |
+| `course_bot/core/config.py` | Sửa | Thêm đọc biến `NOTION_TOKEN`, `NOTION_DATABASE_ID` |
+| `course_bot/jobs/` | Sửa | Gọi `notion.add_deadline()` khi có deadline mới |
+| `course_bot/services/completion_tracker.py` | Sửa | Gọi `notion.mark_completed()` khi react ✅ |
 | `.env` | Sửa | Thêm 2 biến môi trường |
 | `requirements.txt` | Sửa | Thêm `python-dotenv` |
 | `.github/workflows/notify.yml` | Sửa | Thêm 2 secrets |

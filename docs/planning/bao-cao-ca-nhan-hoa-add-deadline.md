@@ -1,5 +1,7 @@
 # Báo cáo: Tính cá nhân hóa của `/add_deadline` + sửa lỗi tiềm ẩn
 
+> **Lưu ý (2026-10-16):** đây là tài liệu kế hoạch lịch sử. Đường dẫn bên dưới (`src/...`) là cấu trúc *trước* đợt tái cấu trúc; vị trí hiện tại xem `docs/architecture/refactoring-blueprint.md` (mục 2.1).
+
 **Ngày:** 03/09/2026
 
 ---

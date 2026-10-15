@@ -1,4 +1,7 @@
 # TÀI LIỆU KỸ THUẬT HỆ THỐNG (SYSTEM TECHNICAL SPECIFICATION)
+
+> **Cập nhật 2026-10-16:** đường dẫn và cây thư mục trong tài liệu này đã được cập nhật theo cấu trúc sau đợt tái cấu trúc (`course_bot/`, `frontend/src/{app,features,shared}`). Xem `docs/architecture/refactoring-blueprint.md`.
+
 ## DỰ ÁN: COURSE FIT HCMUS - DEADLINE & ACADEMIC ACTIVITY HUB
 
 ---
@@ -148,7 +151,7 @@ graph TD
 
     subgraph Automation_Engine ["Background Automation Engine (GitHub Actions)"]
         CronSchedule["⏰ Scheduled Cron (Mỗi 30 phút & 07:00 AM)"]
-        MainRunner["🐍 Python CLI Engine (main.py / src/app.py)"]
+        MainRunner["🐍 Python CLI Engine (main.py / course_bot/jobs/)"]
     end
 
     subgraph Data_Tier ["Data Tier (Supabase PostgreSQL Cloud)"]
@@ -199,10 +202,10 @@ graph TD
 | Tầng (Layer) | Công nghệ lựa chọn | Lý do lựa chọn cốt lõi | Đánh đổi (Trade-offs) & Giải pháp khắc phục |
 |---|---|---|---|
 | **Frontend** | **React 18 + Vite + Tailwind CSS + Lucide Icons** | Khởi động tức thì (Vite HMR), xây dựng giao diện component hoá sạch sẽ, Tailwind giúp style nhanh chuẩn responsive, Lucide cung cấp icon hiện đại, bundle thành static file cực nhẹ để host free trên Vercel. | SPA cần cấu hình rewrite URL trên Vercel để tránh lỗi 404 khi F5. *Giải pháp:* Đã thêm rule rewrite trong `vercel.json`. |
-| **API Gateway / Serverless** | **Python 3.12 (HTTP Serverless Functions trên Vercel)** | Tận dụng 100% logic mã nguồn Python đã viết ở backend (`src/`), không phải duy trì 2 ngôn ngữ khác nhau giữa backend và bot. Chi phí $0/tháng. | Serverless có cold start (khoảng 1-2s). *Giải pháp:* Mã nguồn tối ưu nhẹ, import lazy, không dùng framework cồng kềnh như Django. |
+| **API Gateway / Serverless** | **Python 3.12 (HTTP Serverless Functions trên Vercel)** | Tận dụng 100% logic mã nguồn Python đã viết ở backend (`course_bot/`), không phải duy trì 2 ngôn ngữ khác nhau giữa backend và bot. Chi phí $0/tháng. | Serverless có cold start (khoảng 1-2s). *Giải pháp:* Mã nguồn tối ưu nhẹ, import lazy, không dùng framework cồng kềnh như Django. |
 | **Worker / Background Job** | **GitHub Actions (Ubuntu Runner)** | Chạy ngầm định kỳ (Cron `*/30 * * * *` và `0 0 * * *`), hoàn toàn miễn phí cho kho lưu trữ cá nhân/private, không cần thuê máy chủ VPS treo 24/7. | Cron của GitHub Actions có thể trễ từ 1-5 phút trong giờ cao điểm của GitHub. *Giải pháp:* Chấp nhận được vì deadline trường học quét chu kỳ 30 phút là đủ an toàn. |
 | **Database** | **PostgreSQL (Supabase Cloud)** | Hệ quản trị cơ sở dữ liệu quan hệ mạnh mẽ, hỗ trợ ACID, ràng buộc khóa ngoại (Foreign Keys) chống sai lệch dữ liệu, miễn phí và có giao diện web quản lý tiện lợi. | Giới hạn số lượng connection đồng thời ở gói Free. *Giải pháp:* Sử dụng connection pooler (Session/Transaction mode) của Supabase và đóng kết nối ngay sau khi query xong qua Context Manager. |
-| **Discord Integration** | **Discord REST API Trực tiếp (Pure `requests`)** | Không dùng thư viện nặng như `discord.py` (vốn đòi hỏi WebSocket giữ kết nối liên tục 24/7), giúp hệ thống hoạt động hoàn hảo dưới mô hình Serverless và CLI Job. | Phải tự quản lý format payload JSON và handle rate limit (HTTP 429). *Giải pháp:* Tự viết wrapper chuẩn trong `src/discord_api.py`. |
+| **Discord Integration** | **Discord REST API Trực tiếp (Pure `requests`)** | Không dùng thư viện nặng như `discord.py` (vốn đòi hỏi WebSocket giữ kết nối liên tục 24/7), giúp hệ thống hoạt động hoàn hảo dưới mô hình Serverless và CLI Job. | Phải tự quản lý format payload JSON và handle rate limit (HTTP 429). *Giải pháp:* Tự viết wrapper chuẩn trong `course_bot/integrations/discord/rest.py`. |
 
 ---
 
@@ -513,65 +516,61 @@ erDiagram
 
 ```text
 Notification Project/
-├── .github/
-│   └── workflows/
-│       └── notify.yml               # CI/CD Workflow: chạy cron định kỳ mỗi 30 phút và 7h sáng
-├── api/                             # Serverless API Gateway chạy trên Vercel
-│   ├── index.py                     # Entrypoint điều hướng toàn bộ REST API & Discord Interactions
-│   ├── add_deadline.py              # Endpoint cho API bên thứ ba
-│   └── interactions.py              # Endpoint chuyên biệt cho Discord
-├── frontend/                        # Web Dashboard UI (Vite + React + Tailwind CSS)
-│   ├── public/                      # Static assets, logo, favicon
-│   ├── src/
-│   │   ├── api/
-│   │   │   └── client.ts            # REST API Client giao tiếp với /api/*
-│   │   ├── components/
-│   │   │   ├── Header.tsx           # Thanh điều hướng, trạng thái server, nút đổi theme
-│   │   │   ├── StatsCards.tsx       # 4 thẻ thống kê tiến độ, đếm deadline khẩn cấp
-│   │   │   ├── DeadlineList.tsx     # Danh sách deadline, countdown, bộ lọc & checkbox
-│   │   │   ├── AddDeadlineModal.tsx # Form modal thêm deadline nội bộ
-│   │   │   ├── CourseList.tsx       # Danh sách môn học & liên kết Discord
-│   │   │   └── Announcements.tsx    # Feed thông báo & tài liệu mới từ Moodle
-│   │   ├── App.tsx                  # Root Application Component & Tab Router
-│   │   ├── main.tsx                 # React DOM mount point
-│   │   └── index.css                # Tailwind directives & custom styling
-│   ├── index.html                   # HTML template
-│   ├── package.json                 # Node dependencies (React, Lucide, Tailwind)
-│   ├── tsconfig.json                # TypeScript compiler configuration
-│   └── vite.config.ts               # Vite build config & proxy /api khi dev
-├── migrations/                      # Toàn bộ SQL Scripts di chuyển cơ sở dữ liệu
-│   ├── 001_create_database.sql      # Khởi tạo schema gốc
-│   ├── 002_add_display_name.sql     # Thêm display_name tiếng Việt
-│   ├── 004_add_discord_category.sql # Cấu hình category ID học kỳ
-│   └── 005_add_manual_deadline.sql  # Cột hỗ trợ deadline thủ công (source, added_by)
-├── scripts/                         # CLI Utility Scripts phục vụ vận hành & bảo trì
-│   ├── register_commands.py         # Đăng ký Slash Commands lên Discord Developer Portal
-│   ├── set_category.py              # Gán category Discord cho môn học
-│   ├── rename_all_channels.py       # Đồng bộ chuẩn hóa tên các kênh Discord
-│   └── run_server.py                # Chạy local server tích hợp Web & API
-├── src/                             # Core Python Business Logic Library
-│   ├── __init__.py
-│   ├── config.py                    # Đọc và validate biến môi trường, Timezone HCM
-│   ├── database.py                  # Quản lý kết nối PostgreSQL & Context Manager
-│   ├── db_queries.py                # Toàn bộ câu truy vấn SQL (Data Access Layer)
-│   ├── discord_api.py               # Wrapper gọi Discord REST API (Kênh, Event, Tin nhắn)
-│   ├── moodle_parser.py             # Bóc tách và parse file iCalendar (.ics)
-│   ├── moodle_api.py                # Giao tiếp Moodle Web Services API
-│   ├── announcement_tracker.py      # Bộ quét thông báo & tài liệu khóa học mới
-│   ├── event_tracker.py             # Bộ quét deadline và tạo Scheduled Events
-│   ├── google_calendar_sync.py      # Tích hợp đồng bộ Google Calendar
-│   ├── notion_sync.py               # Tích hợp đồng bộ Notion Todo List
-│   ├── interactions.py              # Logic giải mã chữ ký Ed25519 & dispatch lệnh Discord
-│   ├── external_api.py              # Logic xác thực API Key & thêm deadline từ bên ngoài
-│   └── utils.py                     # Hàm tiện ích (parse_due_time, format date, clean HTML)
-├── .env.example                     # File mẫu biến môi trường
-├── .gitignore                       # Danh sách loại trừ Git
-├── .vercelignore                    # Danh sách file không đưa lên Vercel Serverless
-├── main.py                          # Entrypoint cho GitHub Actions runner
-├── pyproject.toml                   # Khai báo dependency cho Vercel Python Builder
-├── requirements.txt                 # Khai báo thư viện Python (requests, psycopg2, pynacl)
-├── vercel.json                      # Cấu hình routing và rewrite của Vercel
-└── README.md                        # Tài liệu hướng dẫn sử dụng và cài đặt
+├── .github/workflows/            # notify.yml (mỗi 30 phút), daily_summary.yml (06:55), ci.yml (test + build)
+├── api/
+│   └── index.py                  # Entry point Vercel duy nhất: re-export `handler` từ course_bot/web/router.py
+├── course_bot/                   # Package backend (Python)
+│   ├── cli.py                    # argparse: --summary, --progress, ... -> jobs/*
+│   ├── core/                     # Tầng lá: config.py (env), logging_setup.py, time_utils.py (LOCAL_TZ, parse_due_time)
+│   ├── domain/                   # Logic thuần, không I/O
+│   │   ├── course_naming.py      # extract_subject, extract_display_name, slugify_channel_name
+│   │   ├── semester.py           # get_current_semester, extract_semester_index
+│   │   ├── reminders.py          # decide_reminder: NEW / 3_DAYS / 1_DAY
+│   │   └── messages.py           # Mẫu tin nhắn deadline, build_event_url, sanitize_discord_text
+│   ├── db/
+│   │   ├── connection.py         # get_db, execute, fetch_one, fetch_all (psycopg2)
+│   │   └── repositories/         # SQL theo bảng: courses, deadlines, moodle_content, notifications
+│   ├── integrations/             # Client mỏng cho dịch vụ ngoài (không DB, không nghiệp vụ)
+│   │   ├── discord/              # rest.py (REST v10, retry 429), signature.py (Ed25519)
+│   │   ├── moodle/               # webservice.py (Moodle Web Services), ics_feed.py (tải + parse .ics)
+│   │   ├── notion/client.py
+│   │   └── google_calendar/client.py
+│   ├── services/                 # Use-case dùng chung cho nhiều entry point
+│   │   ├── channel_resolver.py   # Tìm / rename / tạo kênh môn trong category "kì N"
+│   │   ├── manual_deadlines.py   # Chuẩn hoá + thêm deadline thủ công (Web, Discord, API bên thứ 3)
+│   │   ├── completion_tracker.py # React ✅ -> đánh dấu hoàn thành
+│   │   ├── deadline_crawler.py   # Thu thập assignment / quiz / calendar từ Moodle API, auto-complete
+│   │   └── announcement_tracker.py # Phát hiện tài liệu / bài đăng diễn đàn mới
+│   ├── jobs/                     # Runtime A (cron/CLI): mỗi chế độ của main.py một file
+│   │   ├── notify.py             # (mặc định) quét deadline, gửi thông báo + nhắc nhở
+│   │   ├── reports.py            # --summary, --progress
+│   │   ├── announcements.py      # --announcements
+│   │   ├── crawl_deadlines.py    # --crawl-deadlines
+│   │   ├── sync_channels.py      # --sync-channels
+│   │   ├── sync_external.py      # --sync-notion, --sync-gcal
+│   │   └── dedup.py              # --dedup
+│   └── web/                      # Runtime B (Vercel HTTP): không import jobs/, Notion, Google Calendar
+│       ├── router.py             # BaseHTTPRequestHandler + điều hướng /api/*
+│       ├── http_utils.py         # JSON, CORS, đọc body
+│       └── routes/               # dashboard.py, discord_interactions.py (/interactions), external.py (/add_deadline)
+├── frontend/                     # Web Dashboard (Vite + React + TypeScript + Tailwind)
+│   └── src/
+│       ├── app/                  # App.tsx, main.tsx, layout/ (Header, Sidebar, BottomNav), useDashboardData, useTheme
+│       ├── features/             # announcements, courses, dashboard, deadlines, settings (view + hook dữ liệu)
+│       ├── shared/               # ui/, api/client.ts, types/, utils/, hooks/
+│       └── index.css
+├── migrations/                   # SQL schema (001, 002, 004, 005; không có 003, xem NOTES.md)
+├── scripts/                      # Công cụ chạy tay: python -m scripts.<nhóm>.<tên>
+│   ├── ops/                      # register_commands, set_category, clean_bot_messages, rename_all_channels, ...
+│   ├── dev/                      # run_server (API + dist local), start.ps1, check_url, dump_moodle_data, notion_helper
+│   ├── debug/                    # Kiểm tra với token thật (gọi Discord / Moodle thật)
+│   └── termux/setup_termux.sh    # Cài máy trạm Android (cron + 10 widget)
+├── tests/                        # pytest: unit/ (core, domain, db, integrations, services, jobs, web) + smoke/bundle/import-direction
+├── docs/                         # architecture/, guides/, planning/, design/, context-pack/
+├── main.py                       # Entry point CLI (GitHub Actions, Termux): gọi course_bot.cli.main()
+├── pyproject.toml / requirements.txt
+├── vercel.json                   # Build frontend/, rewrite /api/* -> api/index.py
+└── .vercelignore                 # Loại main.py, cli.py, jobs/, Notion, Google Calendar, scripts/, tests/, docs/ khỏi bundle
 ```
 
 ---

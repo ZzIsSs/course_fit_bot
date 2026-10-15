@@ -1,5 +1,7 @@
 # Lộ trình thêm lệnh `/deadline`
 
+> **Lưu ý (2026-10-16):** đây là tài liệu kế hoạch lịch sử. Đường dẫn bên dưới (`src/...`) là cấu trúc *trước* đợt tái cấu trúc; vị trí hiện tại xem `docs/architecture/refactoring-blueprint.md` (mục 2.1).
+
 > Mục tiêu (trích ROADMAP.md, mục 1): *"`/deadline`: Liệt kê ngay lập tức các bài tập và hạn chót sắp tới."*
 >
 > Lệnh này **dùng chung hạ tầng interaction endpoint** đã dựng khi làm `/add_deadline` (Vercel + xác thực chữ ký Discord + dispatch table trong `src/interactions.py`). Nếu hạ tầng đó chưa deploy, xem mục 0 trước.

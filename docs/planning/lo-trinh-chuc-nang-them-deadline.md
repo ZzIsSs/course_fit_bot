@@ -1,5 +1,7 @@
 # Lộ trình: Chức năng "Thêm Deadline" qua Discord (`/add_deadline`)
 
+> **Lưu ý (2026-10-16):** đây là tài liệu kế hoạch lịch sử. Đường dẫn bên dưới (`src/...`) là cấu trúc *trước* đợt tái cấu trúc; vị trí hiện tại xem `docs/architecture/refactoring-blueprint.md` (mục 2.1).
+
 > Mục tiêu (trích ROADMAP.md, mục 2 — Quản lý Deadline nội bộ): *"Cho phép thành viên dùng lệnh để thêm các mốc thời gian nội bộ (VD: 'Chốt chia việc đồ án', 'Họp nhóm tối nay'...). Bot sẽ quản lý, nhắc nhở và đưa các deadline này vào báo cáo tiến độ hằng ngày chung với deadline từ Moodle."*
 >
 > File này khác với `lo-trinh-them-lenh-deadline.md` (lệnh `/deadline` — **xem** danh sách). File này là lệnh `/add_deadline` — **thêm** deadline mới.

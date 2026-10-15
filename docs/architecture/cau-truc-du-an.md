@@ -1,4 +1,7 @@
 # 🧭 TỔNG QUAN CẤU TRÚC DỰ ÁN — NOTIFICATION BOT (COURSE FIT HCMUS)
+
+> **Cập nhật 2026-10-16:** đường dẫn và cây thư mục trong tài liệu này đã được cập nhật theo cấu trúc sau đợt tái cấu trúc (`course_bot/`, `frontend/src/{app,features,shared}`). Xem `docs/architecture/refactoring-blueprint.md`.
+
 > **Dành cho:** Nguyên  
 > **Cập nhật gần nhất:** Tháng 10/2026  
 > **Kiến trúc:** 100% Serverless (GitHub Actions + Vercel + Supabase + Discord REST API v10)
@@ -9,94 +12,61 @@
 
 ```text
 Notification Project/
-├── .github/                      # CI/CD & Lịch chạy ngầm tự động (GitHub Actions)
-│   └── workflows/
-│       ├── notify.yml            # [CHỦ CHỐT] Chạy mỗi 30p: quét deadline, thông báo, sync channels, gcal, notion
-│       └── daily_summary.yml     # Chạy 7:00 sáng hàng ngày: gửi báo cáo tổng kết tiến độ và deadline hôm nay
-│
-├── api/                          # Backend API Serverless (Deploy trên Vercel)
-│   ├── index.py                  # REST API Gateway phục vụ Web Dashboard (/api/stats, /api/deadlines, /api/courses)
-│   ├── interactions.py           # Webhook đón Slash Command từ Discord (/add_deadline, /deadline)
-│   └── add_deadline.py           # Webhook nhận deadline từ bên thứ ba (Google Forms, Zapier)
-│
-├── src/                          # TOÀN BỘ MÃ NGUỒN CỐT LÕI (PYTHON CORE)
-│   ├── app.py                    # [BỘ NÃO] Master Orchestrator: điều phối toàn bộ chu trình thông báo và sync
-│   ├── moodle_deadline_crawler.py# [MỚI] Quét trực tiếp Moodle REST API (Assignments, Quizzes, Auto-complete nộp bài)
-│   ├── moodle_api.py             # Client gọi Moodle Web Services API (có User-Agent bypass WAF trường)
-│   ├── moodle_parser.py          # Bóc tách iCalendar (.ics), tính học kỳ, slugify tên kênh Discord
-│   ├── announcement_tracker.py   # Theo dõi bài giảng, slide, PDF, quiz mới và thảo luận diễn đàn (Forum)
-│   ├── discord_api.py            # Client Discord REST API v10 (gửi tin, tạo kênh, tạo Event, chống rate-limit)
-│   ├── interactions.py           # Bộ xử lý nghiệp vụ Slash Command (xác thực Ed25519 với PyNaCl)
-│   ├── external_api.py           # Bộ xử lý nghiệp vụ nhận deadline từ Google Forms / Zapier (HMAC SHA256)
-│   ├── event_tracker.py          # Lắng nghe reaction ✅ trên Discord để tự động đổi trạng thái hoàn thành
-│   ├── google_calendar_sync.py   # Đồng bộ 2 chiều lên Google Calendar qua Service Account
-│   ├── notion_sync.py            # Đồng bộ 2 chiều lên Notion Database Todo List
-│   ├── database.py               # Quản lý kết nối PostgreSQL (Supabase) qua context manager
-│   ├── db_queries.py             # Tầng DAO (chứa tất cả các câu truy vấn SQL chuẩn)
-│   ├── config.py                 # Đọc và kiểm tra biến môi trường .env, múi giờ Việt Nam (UTC+7)
-│   └── utils.py                  # Tiện ích chuẩn hoá múi giờ, phân tích ngày giờ linh hoạt
-│
-├── frontend/                     # WEB DASHBOARD (REACT + VITE + TAILWIND)
-│   ├── src/
-│   │   ├── api/client.ts         # HTTP Client gọi API Vercel an toàn
-│   │   ├── types/index.ts        # Định nghĩa kiểu dữ liệu TypeScript
-│   │   ├── utils/dateUtils.ts    # Tiện ích đếm ngược (countdown), format ngày tiếng Việt
-│   │   ├── components/
-│   │   │   ├── layout/           # Header.tsx, Sidebar.tsx
-│   │   │   └── ui/               # Button, Modal, Checkbox, ProgressBar, Toast, Badge...
-│   │   ├── features/
-│   │   │   ├── dashboard/        # HeroProgressBanner, MetricCards
-│   │   │   ├── deadlines/        # ListView, KanbanView, AddDeadlineModal, Toolbar, ItemCard
-│   │   │   ├── courses/          # CoursesView (quản lý môn học)
-│   │   │   ├── announcements/    # AnnouncementsView (thông báo tài liệu/diễn đàn)
-│   │   │   └── settings/         # SettingsView (hướng dẫn cấu hình)
-│   │   ├── App.tsx               # Component chính điều phối view và state toàn cục
-│   │   └── main.tsx              # Entrypoint khởi tạo React DOM
-│   ├── package.json              # Danh sách thư viện frontend
-│   ├── vite.config.ts            # Cấu hình Vite build
-│   └── tailwind.config.js        # Cấu hình giao diện Tailwind
-│
-├── migrations/                   # LỊCH SỬ NÂNG CẤP DATABASE (SUPABASE POSTGRESQL)
-│   ├── 001_create_database.sql   # Tạo các bảng cơ sở: courses, deadlines, modules, forums, notifications
-│   ├── 002_add_display_name.sql  # Thêm cột tên môn tiếng Việt (display_name)
-│   ├── 004_add_discord_category.sql # Thêm quản lý Category theo từng học kỳ
-│   ├── 005_add_manual_deadline_support.sql # Hỗ trợ deadline thủ công (source, added_by)
-│   └── NOTES.md                  # Hướng dẫn chạy migration bằng Supabase SQL Editor
-│
-├── scripts/                      # TIỆN ÍCH DÀNH CHO BẢO TRÌ & DEV
-│   ├── register_commands.py      # Đăng ký Slash Command lên Discord Developer Portal
-│   ├── rename_all_channels.py    # Đổi tên hàng loạt kênh Discord theo chuẩn mới (vd: nmttnt-csc10014)
-│   ├── discord_auto_channel.py   # Tạo tự động toàn bộ kênh Discord từ danh sách môn Moodle
-│   ├── clean_bot_messages.py     # Quét và dọn dẹp các tin nhắn rác hoặc trùng lặp của Bot
-│   ├── set_category.py           # Gán Category Discord cho môn học thủ công
-│   ├── notion_helper.py          # Hỗ trợ tự động tạo Database trên Notion theo schema chuẩn
-│   ├── dump_moodle_data.py       # Tải và dump mẫu JSON từ Moodle API để kiểm tra cấu trúc
-│   ├── check_url.py              # Kiểm tra nhanh URL Calendar ICS hoặc Moodle API
-│   ├── setup_termux.sh           # [MỚI] Tự động cài đặt & tạo 10 Widget máy trạm trên Termux (Android)
-│   └── run_server.py             # Chạy local server giả lập Vercel để test API
-│
-├── tests/                        # BỘ TEST TỰ ĐỘNG (UNIT & INTEGRATION TESTS)
-│   ├── test_bot.py               # Test luồng xử lý chính của Bot
-│   ├── test_moodle.py            # Test parser Moodle ICS & API
-│   ├── test_google_calendar_sync.py # Test đồng bộ Google Calendar
-│   ├── test_deduplication.py     # Test cơ chế chống spam tin nhắn Discord
-│   ├── test_semester_calculation.py # Test thuật toán tính học kỳ và năm học
-│   └── ...                       # Các test case đặc thù khác
-│
-├── docs/                         # TÀI LIỆU DỰ ÁN CHI TIẾT
-│   ├── context-pack/             # 6 tài liệu kiến trúc toàn diện (Data flow, Tech stack, Hotspots...)
-│   ├── google-calendar-integration.md # Hướng dẫn cài đặt Google Calendar Service Account
-│   ├── notion-todo-list-integration.md# Hướng dẫn kết nối Notion Database
-│   ├── kiem-tra-moodle-api.md    # Hướng dẫn lấy và kiểm tra Token Moodle qua trình duyệt
-│   └── ...                       # Các tài liệu thiết kế Figma, lộ trình tính năng
-│
-├── main.py                       # [RUNNER CHÍNH] File chạy dòng lệnh CLI của Bot
-├── requirements.txt              # Các thư viện Python cần cài (requests, psycopg2, pynacl...)
-├── vercel.json                   # Cấu hình routing deploy Vercel Serverless
-├── README.md                     # Hướng dẫn cài đặt và sử dụng tổng quát
-├── ROADMAP.md                    # Lộ trình phát triển tính năng
-├── KE_HOACH_MAY_TRAM_NGUYEN.md   # Hướng dẫn thiết lập máy trạm cá nhân của Nguyên
-└── TERMUX_WORKSTATION.md         # Hướng dẫn vận hành hệ thống trên Termux (Android)
+├── .github/workflows/            # notify.yml (mỗi 30 phút), daily_summary.yml (06:55), ci.yml (test + build)
+├── api/
+│   └── index.py                  # Entry point Vercel duy nhất: re-export `handler` từ course_bot/web/router.py
+├── course_bot/                   # Package backend (Python)
+│   ├── cli.py                    # argparse: --summary, --progress, ... -> jobs/*
+│   ├── core/                     # Tầng lá: config.py (env), logging_setup.py, time_utils.py (LOCAL_TZ, parse_due_time)
+│   ├── domain/                   # Logic thuần, không I/O
+│   │   ├── course_naming.py      # extract_subject, extract_display_name, slugify_channel_name
+│   │   ├── semester.py           # get_current_semester, extract_semester_index
+│   │   ├── reminders.py          # decide_reminder: NEW / 3_DAYS / 1_DAY
+│   │   └── messages.py           # Mẫu tin nhắn deadline, build_event_url, sanitize_discord_text
+│   ├── db/
+│   │   ├── connection.py         # get_db, execute, fetch_one, fetch_all (psycopg2)
+│   │   └── repositories/         # SQL theo bảng: courses, deadlines, moodle_content, notifications
+│   ├── integrations/             # Client mỏng cho dịch vụ ngoài (không DB, không nghiệp vụ)
+│   │   ├── discord/              # rest.py (REST v10, retry 429), signature.py (Ed25519)
+│   │   ├── moodle/               # webservice.py (Moodle Web Services), ics_feed.py (tải + parse .ics)
+│   │   ├── notion/client.py
+│   │   └── google_calendar/client.py
+│   ├── services/                 # Use-case dùng chung cho nhiều entry point
+│   │   ├── channel_resolver.py   # Tìm / rename / tạo kênh môn trong category "kì N"
+│   │   ├── manual_deadlines.py   # Chuẩn hoá + thêm deadline thủ công (Web, Discord, API bên thứ 3)
+│   │   ├── completion_tracker.py # React ✅ -> đánh dấu hoàn thành
+│   │   ├── deadline_crawler.py   # Thu thập assignment / quiz / calendar từ Moodle API, auto-complete
+│   │   └── announcement_tracker.py # Phát hiện tài liệu / bài đăng diễn đàn mới
+│   ├── jobs/                     # Runtime A (cron/CLI): mỗi chế độ của main.py một file
+│   │   ├── notify.py             # (mặc định) quét deadline, gửi thông báo + nhắc nhở
+│   │   ├── reports.py            # --summary, --progress
+│   │   ├── announcements.py      # --announcements
+│   │   ├── crawl_deadlines.py    # --crawl-deadlines
+│   │   ├── sync_channels.py      # --sync-channels
+│   │   ├── sync_external.py      # --sync-notion, --sync-gcal
+│   │   └── dedup.py              # --dedup
+│   └── web/                      # Runtime B (Vercel HTTP): không import jobs/, Notion, Google Calendar
+│       ├── router.py             # BaseHTTPRequestHandler + điều hướng /api/*
+│       ├── http_utils.py         # JSON, CORS, đọc body
+│       └── routes/               # dashboard.py, discord_interactions.py (/interactions), external.py (/add_deadline)
+├── frontend/                     # Web Dashboard (Vite + React + TypeScript + Tailwind)
+│   └── src/
+│       ├── app/                  # App.tsx, main.tsx, layout/ (Header, Sidebar, BottomNav), useDashboardData, useTheme
+│       ├── features/             # announcements, courses, dashboard, deadlines, settings (view + hook dữ liệu)
+│       ├── shared/               # ui/, api/client.ts, types/, utils/, hooks/
+│       └── index.css
+├── migrations/                   # SQL schema (001, 002, 004, 005; không có 003, xem NOTES.md)
+├── scripts/                      # Công cụ chạy tay: python -m scripts.<nhóm>.<tên>
+│   ├── ops/                      # register_commands, set_category, clean_bot_messages, rename_all_channels, ...
+│   ├── dev/                      # run_server (API + dist local), start.ps1, check_url, dump_moodle_data, notion_helper
+│   ├── debug/                    # Kiểm tra với token thật (gọi Discord / Moodle thật)
+│   └── termux/setup_termux.sh    # Cài máy trạm Android (cron + 10 widget)
+├── tests/                        # pytest: unit/ (core, domain, db, integrations, services, jobs, web) + smoke/bundle/import-direction
+├── docs/                         # architecture/, guides/, planning/, design/, context-pack/
+├── main.py                       # Entry point CLI (GitHub Actions, Termux): gọi course_bot.cli.main()
+├── pyproject.toml / requirements.txt
+├── vercel.json                   # Build frontend/, rewrite /api/* -> api/index.py
+└── .vercelignore                 # Loại main.py, cli.py, jobs/, Notion, Google Calendar, scripts/, tests/, docs/ khỏi bundle
 ```
 
 ---
@@ -104,25 +74,25 @@ Notification Project/
 ## 🧩 2. CHI TIẾT TỪNG TẦNG CHỨC NĂNG (ARCHITECTURE LAYERS)
 
 ### 🚀 Tầng 1: Thu thập Dữ liệu (Ingestion Layer)
-* **Moodle REST API (`src/moodle_deadline_crawler.py` & `src/moodle_api.py`):**
+* **Moodle REST API (`course_bot/services/deadline_crawler.py` & `course_bot/integrations/moodle/webservice.py`):**
   * Dùng `MOODLE_TOKEN` quét trực tiếp:
     1. `mod_assign_get_assignments`: Bắt trọn vẹn deadline bài tập (`duedate`, `cutoffdate`).
     2. `mod_quiz_get_quizzes_by_courses`: Bắt deadline đóng bài trắc nghiệm (`timeclose`).
     3. `core_calendar_get_action_events_by_timesort`: Bắt các sự kiện cần nộp bài khác.
     4. `mod_assign_get_submission_status`: **Tự động tick hoàn thành (Auto-complete)** khi phát hiện sinh viên đã nộp bài.
-* **Moodle iCalendar (`src/moodle_parser.py`):**
+* **Moodle iCalendar (`course_bot/integrations/moodle/ics_feed.py`):**
   * Tải và parse file `.ics` từ `MOODLE_CALENDAR_URL` để lấy các sự kiện lịch tổng quát.
-* **Discord Slash Command (`src/interactions.py` + `api/interactions.py`):**
+* **Discord Slash Command (`course_bot/web/routes/discord_interactions.py` + `api/interactions.py`):**
   * Lệnh `/add_deadline`: Cho phép Nguyên hoặc bạn bè nhập deadline trực tiếp trên Discord.
 * **Web Dashboard (`frontend/` + `api/index.py`):**
   * Thêm deadline qua giao diện Web trực quan.
-* **External Webhook (`src/external_api.py` + `api/add_deadline.py`):**
+* **External Webhook (`course_bot/web/routes/external.py` + `api/add_deadline.py`):**
   * Đón nhận deadline gửi từ Google Forms hoặc Zapier.
 
 ---
 
 ### 🧠 Tầng 2: Điều phối & Nghiệp vụ (Orchestration & Business Logic)
-* **`src/app.py`:**
+* **`course_bot/jobs/`:**
   * Điều phối chạy tuần tự:
     1. Kiểm tra reaction `✅` từ người dùng (`check_completions`).
     2. Chạy Moodle API Crawler để lấy deadline bài tập/quiz mới nhất.
@@ -135,7 +105,7 @@ Notification Project/
 ---
 
 ### 🗄️ Tầng 3: Lưu trữ Dữ liệu (Persistence Layer - Supabase PostgreSQL)
-* **`src/database.py` & `src/db_queries.py`:**
+* **`course_bot/db/connection.py` & `course_bot/db/repositories/`:**
   * Quản lý kết nối an toàn với context manager `get_db()`.
   * Các bảng chính trong database:
     * `courses`: Lưu mã môn (CSC10014), tên tiếng Việt, channel ID Discord, category ID học kỳ.
@@ -147,14 +117,14 @@ Notification Project/
 ---
 
 ### 🌐 Tầng 4: Đồng bộ & Thông báo Ngoại vi (Notification & Sync Layer)
-* **Discord (`src/discord_api.py`):**
+* **Discord (`course_bot/integrations/discord/rest.py`):**
   * Tự tạo channel theo môn học chuẩn hóa: `#nmttnt-csc10014`.
   * Gom channel vào đúng Category học kỳ (vd: `KÌ 2`, `KÌ 3`).
   * Tạo Scheduled Events trên Discord để xem trên lịch server.
-* **Google Calendar (`src/google_calendar_sync.py`):**
+* **Google Calendar (`course_bot/integrations/google_calendar/client.py`):**
   * Tạo sự kiện có chuông báo điện thoại trước 24h, 3h, 30p.
   * Tự đổi màu xanh lá và thêm tiền tố `✅ [XONG]` khi hoàn thành.
-* **Notion Todo List (`src/notion_sync.py`):**
+* **Notion Todo List (`course_bot/integrations/notion/client.py`):**
   * Đẩy deadline vào bảng công việc trên Notion, tự tick checkbox khi làm xong.
 
 ---
@@ -217,10 +187,10 @@ GOOGLE_SERVICE_ACCOUNT_JSON={...}       # Toàn bộ nội dung file JSON Servic
 
 | Module / Thư mục | Trách nhiệm chính |
 | :--- | :--- |
-| [`src/app.py`](../../src/app.py) | Điều phối chu trình quét deadline, chuỗi nhắc 3 ngày / 1 ngày, gửi summary & progress report. |
-| [`src/moodle_deadline_crawler.py`](../../src/moodle_deadline_crawler.py) | Cào trực tiếp bài tập (`mod_assign`) và quiz (`mod_quiz`) từ Moodle API; tự động đánh dấu hoàn thành khi sinh viên nộp bài. |
-| [`src/announcement_tracker.py`](../../src/announcement_tracker.py) | Theo dõi tài liệu upload mới (slide, PDF) và bài viết diễn đàn. |
-| [`src/discord_api.py`](../../src/discord_api.py) | Tạo kênh, phân loại category theo học kỳ, gửi tin nhắn, tạo Scheduled Event. |
+| [`course_bot/jobs/`](../../course_bot/jobs/) | Điều phối chu trình quét deadline, chuỗi nhắc 3 ngày / 1 ngày, gửi summary & progress report. |
+| [`course_bot/services/deadline_crawler.py`](../../course_bot/services/deadline_crawler.py) | Cào trực tiếp bài tập (`mod_assign`) và quiz (`mod_quiz`) từ Moodle API; tự động đánh dấu hoàn thành khi sinh viên nộp bài. |
+| [`course_bot/services/announcement_tracker.py`](../../course_bot/services/announcement_tracker.py) | Theo dõi tài liệu upload mới (slide, PDF) và bài viết diễn đàn. |
+| [`course_bot/integrations/discord/rest.py`](../../course_bot/integrations/discord/rest.py) | Tạo kênh, phân loại category theo học kỳ, gửi tin nhắn, tạo Scheduled Event. |
 | [`api/index.py`](../../api/index.py) | REST API phục vụ Web Dashboard hoạt động trên Vercel. |
 | [`frontend/`](../../frontend/) | Giao diện Web SPA quản trị bài tập (hỗ trợ kéo thả Kanban, lọc môn học). |
 

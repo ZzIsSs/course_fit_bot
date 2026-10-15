@@ -1,4 +1,7 @@
 # QUY TRÌNH & LỘ TRÌNH TRIỂN KHAI FRONTEND (FRONTEND WORKFLOW & IMPLEMENTATION GUIDE)
+
+> **Cập nhật 2026-10-16:** đường dẫn và cây thư mục trong tài liệu này đã được cập nhật theo cấu trúc sau đợt tái cấu trúc (`course_bot/`, `frontend/src/{app,features,shared}`). Xem `docs/architecture/refactoring-blueprint.md`.
+
 ## HỆ THỐNG: COURSE FIT HCMUS - STUDY & DEADLINE MANAGEMENT SYSTEM
 
 > **Mục đích tài liệu:** Quy chuẩn hóa toàn bộ quy trình phát triển, cấu trúc thư mục, kiến trúc quản lý trạng thái và từng bước triển khai mã nguồn Frontend cho hệ thống Web Dashboard. Tài liệu này đóng vai trò là kim chỉ nam kỹ thuật (Technical Workflow) trước khi tiến hành viết code.
@@ -65,99 +68,31 @@ Toàn bộ mã nguồn giao diện được tổ chức theo kiến trúc **Feat
 
 ```text
 frontend/
-├── public/                          # Tài nguyên tĩnh: Favicon, Logo FIT HCMUS
-│   ├── favicon.ico
-│   └── logo-fit.svg
-├── src/
-│   ├── assets/                      # Hình ảnh minh họa, icon rỗng (Empty state)
-│   │
-│   ├── api/                         # Lớp giao tiếp mạng (Networking Layer)
-│   │   ├── client.ts                # Base fetch wrapper, xử lý URL & mã lỗi HTTP
-│   │   └── endpoints.ts             # Danh sách hằng số Endpoint URL
-│   │
-│   ├── types/                       # Khai báo TypeScript Models (Ánh xạ 1:1 với Supabase)
-│   │   ├── course.ts                # Interface Course
-│   │   ├── deadline.ts              # Interface Deadline, DeadlineStatus, DeadlineFilter
-│   │   ├── announcement.ts          # Interface Announcement, CourseModule
-│   │   └── stats.ts                 # Interface DashboardStats
-│   │
-│   ├── components/                  # Thư viện UI nguyên tử tái sử dụng (Design System)
-│   │   ├── ui/
-│   │   │   ├── Button.tsx           # Button (Primary, Secondary, Ghost, Danger)
-│   │   │   ├── Badge.tsx            # Status Badge (Gấp, Sắp tới, Đã xong, Quá hạn)
-│   │   │   ├── Input.tsx            # Input trường văn bản, Search box có icon
-│   │   │   ├── Dropdown.tsx         # Dropdown chọn môn, chọn học kỳ
-│   │   │   ├── Modal.tsx            # Hộp thoại Modal Container (Overlay + Animate)
-│   │   │   ├── ProgressBar.tsx      # Thanh tiến độ học kỳ (Gradient / Striped)
-│   │   │   ├── Checkbox.tsx         # Checkbox tương tác hoàn thành bài tập
-│   │   │   ├── Skeleton.tsx         # Hiệu ứng Shimmer khi đang tải dữ liệu
-│   │   │   └── Toast.tsx            # Hộp thông báo nổi phản hồi kết quả
-│   │   └── layout/
-│   │       ├── Header.tsx           # Thanh điều hướng trên cùng (Search, Add CTA, Status)
-│   │       ├── Sidebar.tsx          # Thanh menu bên trái (Thu gọn / Mở rộng)
-│   │       └── PageContainer.tsx    # Khung layout chuẩn bọc nội dung các màn hình
-│   │
-│   ├── features/                    # 5 Module tính năng nghiệp vụ chính
-│   │   │
-│   │   ├── dashboard/               # [Màn 1] Dashboard Tổng quan
-│   │   │   ├── components/
-│   │   │   │   ├── HeroProgressBanner.tsx # Banner tiến độ học kỳ lớn
-│   │   │   │   ├── MetricCards.tsx        # 4 thẻ KPI (Tổng, Gấp, Đã xong, Môn)
-│   │   │   │   ├── UrgentDeadlines.tsx    # Danh sách việc cần nộp trong 24 giờ
-│   │   │   │   └── QuickLinks.tsx         # Lối tắt mở Discord, GCal, Notion
-│   │   │   └── useDashboardStats.ts       # Hook lấy số liệu thống kê từ /api/stats
-│   │   │
-│   │   ├── deadlines/               # [Màn 2] Trung tâm Quản lý Deadline
-│   │   │   ├── components/
-│   │   │   │   ├── DeadlineItemCard.tsx   # Card bài tập + Checkbox hoàn thành
-│   │   │   │   ├── DeadlineToolbar.tsx    # Thanh tìm kiếm + Bộ lọc môn + View Switcher
-│   │   │   │   ├── DeadlineListView.tsx   # Hiển thị dạng danh sách theo ngày/tuần
-│   │   │   │   ├── DeadlineKanbanView.tsx # Hiển thị dạng bảng Kanban 3 cột
-│   │   │   │   ├── DeadlineCalendarView.tsx# Hiển thị dạng lịch tháng
-│   │   │   │   └── AddDeadlineModal.tsx   # Form modal thêm deadline nội bộ
-│   │   │   ├── hooks/
-│   │   │   │   ├── useDeadlines.ts        # Query fetching danh sách deadline
-│   │   │   │   └── useToggleComplete.ts   # Mutation xử lý Optimistic Update ✅
-│   │   │   └── deadlineUtils.ts           # Hàm tính countdown, format ngày Việt Nam
-│   │   │
-│   │   ├── courses/                 # [Màn 3] Môn học & Kho Tài liệu Moodle
-│   │   │   ├── components/
-│   │   │   │   ├── CourseCard.tsx         # Thẻ môn học (#nmttnt-csc10014)
-│   │   │   │   ├── CourseMaterialList.tsx # Danh sách tài liệu (PDF, Slide, Link)
-│   │   │   │   └── SemesterTabs.tsx       # Phân nhóm theo Category học kỳ
-│   │   │   └── useCourses.ts              # Hook lấy danh sách môn từ /api/courses
-│   │   │
-│   │   ├── announcements/           # [Màn 4] Bảng tin & AI Tóm tắt (Gemini)
-│   │   │   ├── components/
-│   │   │   │   ├── AnnouncementCard.tsx   # Thẻ bài đăng diễn đàn Moodle
-│   │   │   │   └── AISummaryBox.tsx       # Khung hiển thị tóm tắt TL;DR có gradient AI
-│   │   │   └── useAnnouncements.ts        # Hook lấy thông báo từ /api/announcements
-│   │   │
-│   │   └── settings/                # [Màn 5] Cài đặt & Tích hợp Hệ thống
-│   │       ├── components/
-│   │       │   ├── IntegrationCard.tsx    # Thẻ thông tin trạng thái Discord/GCal/Notion
-│   │       │   ├── ManualSyncButton.tsx   # Nút bấm cưỡng chế quét Moodle ngay
-│   │       │   └── PasskeyConfig.tsx      # Quản lý mã truy cập quyền ghi
-│   │       └── useSystemStatus.ts         # Hook kiểm tra tình trạng Bot & Database
-│   │
-│   ├── hooks/                       # Custom hooks toàn cục
-│   │   ├── useTheme.ts              # Quản lý Dark/Light mode (lưu LocalStorage)
-│   │   ├── useToast.ts              # Kích hoạt Toast notification
-│   │   └── useDebounce.ts           # Trì hoãn thao tác gõ ô tìm kiếm
-│   │
-│   ├── utils/                       # Hàm tiện ích dùng chung
-│   │   ├── dateUtils.ts             # Format ngày giờ GMT+7, tính thời gian đếm ngược
-│   │   └── formatters.ts            # Định dạng tên môn, tiền tệ, số liệu
-│   │
-│   ├── App.tsx                      # Component gốc: Quản lý Tab Router & Providers
-│   ├── main.tsx                     # Mount React vào index.html
-│   └── index.css                    # Tailwind Directives & Custom Scrollbars
-│
-├── index.html                       # HTML Template
-├── package.json                     # Danh sách thư viện phụ thuộc
-├── tsconfig.json                    # Cấu hình TypeScript
-├── tailwind.config.js               # Khai báo bảng màu tokens HCMUS Blue
-└── vite.config.ts                   # Cấu hình Vite & Proxy API
+├── index.html                    # Load /src/app/main.tsx
+├── vite.config.ts                # Alias @ -> src, proxy /api -> http://localhost:8000
+├── tsconfig.json                 # paths: "@/*" -> "src/*"
+├── tailwind.config.js / postcss.config.js
+└── src/
+    ├── app/                      # Khung ứng dụng
+    │   ├── main.tsx              # Mount React vào index.html
+    │   ├── App.tsx               # Layout + chuyển tab (không chứa logic dữ liệu)
+    │   ├── useDashboardData.ts   # Ghép hook của các feature, 1 cờ loading / refreshing / fetchError chung
+    │   ├── useTheme.ts           # Dark / light mode (localStorage + class `dark`)
+    │   └── layout/               # Header.tsx, Sidebar.tsx, BottomNav.tsx (điện thoại)
+    ├── features/                 # Mỗi tab một thư mục; feature không import lẫn nhau
+    │   ├── dashboard/            # HeroProgressBanner, MetricCards, useStats.ts
+    │   ├── deadlines/            # AddDeadlineModal, DeadlineItemCard, DeadlineListView, DeadlineKanbanView,
+    │   │                         # DeadlineToolbar, useDeadlines.ts, useDeadlineFilters.ts
+    │   ├── courses/              # CoursesView, useCourses.ts
+    │   ├── announcements/        # AnnouncementsView, useAnnouncements.ts
+    │   └── settings/             # SettingsView
+    ├── shared/                   # Dùng chung cho ≥ 2 feature
+    │   ├── ui/                   # Badge, Button, Checkbox, Modal, ProgressBar, Skeleton, Toast
+    │   ├── api/client.ts         # Gọi /api/*; hàm get* ném lỗi khi request thất bại
+    │   ├── hooks/useToasts.ts
+    │   ├── types/index.ts        # Course, Deadline, DashboardStats, Announcement, ...
+    │   └── utils/dateUtils.ts    # getCountdown, formatVietnameseDate, getCurrentSemester
+    └── index.css
 ```
 
 ---
@@ -167,7 +102,7 @@ frontend/
 Tất cả các Model trong Frontend phải khớp chuẩn với Schema Supabase của dự án:
 
 ```typescript
-// src/types/course.ts
+// src/shared/types/course.ts
 export interface Course {
   courses_id: number;
   course_name: string;        // Ví dụ: 'CSC10105'
@@ -178,7 +113,7 @@ export interface Course {
   pending_deadlines_count?: number;
 }
 
-// src/types/deadline.ts
+// src/shared/types/deadline.ts
 export type DeadlineSource = 'moodle' | 'manual' | 'external';
 
 export interface Deadline {
@@ -200,7 +135,7 @@ export interface Deadline {
   discord_channel_id?: string | null;
 }
 
-// src/types/stats.ts
+// src/shared/types/stats.ts
 export interface DashboardStats {
   total_deadlines: number;
   completed_deadlines: number;
@@ -298,14 +233,14 @@ export function useToggleComplete() {
 ---
 
 ### Giai đoạn 2: Xây dựng UI Primitives & Khung Layout (Design System)
-1. **Xây dựng các Component dùng chung (`src/components/ui/`):**
+1. **Xây dựng các Component dùng chung (`src/shared/ui/`):**
    - `Button.tsx`: Hỗ trợ 5 biến thể (Primary, Secondary, Outline, Ghost, Danger) và trạng thái loading spinner.
    - `Badge.tsx`: Hiển thị độ khẩn cấp bài tập (Khẩn cấp, Sắp tới, Đã nộp, Quá hạn).
    - `Checkbox.tsx`: Thiết kế riêng với hiệu ứng tick xanh lá mượt mà.
    - `ProgressBar.tsx`: Thanh tiến độ học kỳ có hỗ trợ dải màu gradient.
    - `Modal.tsx`: Hộp thoại mở ra dạng Overlay mờ nền (`backdrop-blur`).
    - `Toast.tsx`: Thông báo nổi góc phải dưới màn hình.
-2. **Xây dựng Shell Layout (`src/components/layout/`):**
+2. **Xây dựng Shell Layout (`src/app/layout/`):**
    - `Header.tsx`: Thanh điều hướng chứa Logo, Ô tìm kiếm nhanh (Cmd+K), Nút "+ Thêm Deadline", Đèn báo trạng thái Serverless (`🟢 Live Sync`), Nút đổi theme.
    - `Sidebar.tsx`: Danh mục chuyển đổi giữa 5 màn hình chính, hỗ trợ thu gọn tiết kiệm không gian.
    - `PageContainer.tsx`: Đảm bảo độ rộng khung hình chuẩn `1440px` và đệm lề chuẩn Responsive.
@@ -313,7 +248,7 @@ export function useToggleComplete() {
 ---
 
 ### Giai đoạn 3: Mở rộng Backend API Gateway (`api/index.py` & `src/`)
-1. **Cập nhật `src/db_queries.py`:**
+1. **Cập nhật `course_bot/db/repositories/`:**
    - Viết hàm `toggle_deadline_completed(conn, deadlines_id, completed, completed_by)`.
    - Viết hàm `get_dashboard_stats(conn)` tính toán tỷ lệ % hoàn thành và số bài khẩn cấp.
    - Viết hàm `get_all_deadlines_formatted(conn, course_name, status)`.

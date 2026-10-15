@@ -1,5 +1,7 @@
 # Cập nhật: Mặc định giờ 23:59 + API bên thứ 3 cho `add_deadline`
 
+> **Lưu ý (2026-10-16):** đây là tài liệu kế hoạch lịch sử. Đường dẫn bên dưới (`src/...`) là cấu trúc *trước* đợt tái cấu trúc; vị trí hiện tại xem `docs/architecture/refactoring-blueprint.md` (mục 2.1).
+
 **Ngày:** 03/09/2026
 **Phạm vi:** 2 thay đổi Nguyên yêu cầu, đã viết code + **kiểm tra chạy thực tế** (không chỉ đọc mắt) trước khi giao.
 
