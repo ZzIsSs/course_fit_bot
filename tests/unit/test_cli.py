@@ -104,6 +104,11 @@ def test_dedup_limit_not_int_exits_1(jobs, capsys):
     (["--dedup", "--limit"], "--limit"),
     (["--dedup", "--foo"], "--foo"),
     (["--dedup", "--dry-run", "extra"], "extra"),
+    (["--dedup", "--channel=x"], "--channel=x"),
+    (["--dedup", "--limit=3"], "--limit=3"),
+    # argparse (từ commit chuyển đổi): giá trị bắt đầu bằng "-" không được nhận làm tên kênh.
+    # Bản parse tay cũ lấy "--dry-run" làm tên kênh và chạy dedup thật.
+    (["--dedup", "--channel", "--dry-run"], "--channel"),
 ])
 def test_dedup_bad_argument_exits_1(jobs, capsys, argv, bad):
     with pytest.raises(SystemExit) as exc:
