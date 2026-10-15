@@ -24,9 +24,9 @@ from course_bot.domain.reminders import decide_reminder, NEW, NOTIFIED_FIELDS
 from course_bot.domain.messages import build_event_url, build_deadline_message
 from course_bot.integrations.moodle.ics_feed import fetch_and_parse_events
 from course_bot.services.channel_resolver import resolve_course_channel
-from course_bot.jobs.completions import check_completions
-from course_bot.jobs.announcements import check_moodle_updates
-from course_bot.jobs.crawl_deadlines import crawl_moodle_deadlines
+from course_bot.services.completion_tracker import check_completions
+from course_bot.services.announcement_tracker import check_moodle_updates
+from course_bot.services.deadline_crawler import crawl_moodle_deadlines
 from course_bot.integrations.notion.client import NotionSync
 from course_bot.integrations.google_calendar.client import GoogleCalendarSync
 from course_bot.core.time_utils import ensure_tz as _ensure_tz

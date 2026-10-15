@@ -12,7 +12,7 @@ from course_bot.integrations.discord.rest import (
     create_channel,
     send_message,
 )
-from course_bot.jobs.completions import check_completions
+from course_bot.services.completion_tracker import check_completions
 from course_bot.core.time_utils import ensure_tz as _ensure_tz
 
 

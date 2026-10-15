@@ -18,7 +18,7 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
    GitHub Actions / Termux cron ──►  main.py  ──►  course_bot/jobs/
                                                    │   ├─ notify (ics_feed) / crawl_deadlines
                                                    │   ├─ announcements
-                                                   │   └─ completions (react ✅ → hoàn thành)
+                                                   │   └─ services/ (kênh môn, react ✅ → hoàn thành)
                                                    ▼
                                        Supabase PostgreSQL (migrations/)
                                          ▲            │
@@ -57,7 +57,8 @@ Bot gọi trực tiếp Discord REST API (không dùng `discord.py`), nên khôn
 | Đường dẫn | Mục đích |
 |---|---|
 | `main.py` | CLI entry point cho các tác vụ định kỳ (chọn chế độ bằng tham số). |
-| `course_bot/jobs/` | Mỗi chế độ CLI một file: `notify.py` (mặc định), `reports.py` (`--summary`, `--progress`), `announcements.py`, `sync_channels.py`, `sync_external.py` (`--sync-notion`, `--sync-gcal`), `crawl_deadlines.py`, `completions.py` (react `✅`), `dedup.py`. |
+| `course_bot/jobs/` | Mỗi chế độ CLI một file: `notify.py` (mặc định), `reports.py` (`--summary`, `--progress`), `announcements.py`, `sync_channels.py`, `sync_external.py` (`--sync-notion`, `--sync-gcal`), `crawl_deadlines.py`, `dedup.py`. |
+| `course_bot/services/` | Use-case dùng chung cho nhiều entry point: `channel_resolver.py` (tìm/rename/tạo kênh môn), `manual_deadlines.py` (thêm deadline thủ công từ Web, Discord, API), `completion_tracker.py` (react `✅` → hoàn thành), `deadline_crawler.py` (Moodle API), `announcement_tracker.py` (nội dung Moodle mới). |
 | `course_bot/core/` | `config.py` (đọc biến môi trường, hỗ trợ `.env`), `time_utils.py` (`LOCAL_TZ` = UTC+7, parse hạn chót), `logging_setup.py`. |
 | `course_bot/db/` | `connection.py` (kết nối PostgreSQL) và `repositories/` (SQL theo từng bảng: `courses.py`, `deadlines.py`, `moodle_content.py`, `notifications.py`). |
 | `course_bot/integrations/` | Client mỏng cho dịch vụ ngoài: `moodle/webservice.py` (Moodle Web Services), `discord/rest.py` (Discord REST: kênh, tin nhắn, reaction, Scheduled Events), `discord/signature.py` (xác thực Ed25519), `notion/client.py`, `google_calendar/client.py`. |
