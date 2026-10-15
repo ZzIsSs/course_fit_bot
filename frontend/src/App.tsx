@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ActiveTab, ViewMode, FilterStatus, Deadline, Course, DashboardStats, Announcement, ToastMessage } from './types';
-import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion } from './api/client';
+import { getCourses, getDeadlines, getStats, getAnnouncements, createManualDeadline, toggleDeadlineCompletion, isAbortError } from './api/client';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { BottomNav } from './components/layout/BottomNav';
@@ -86,26 +86,35 @@ export const App: React.FC = () => {
 
   const toggleTheme = () => setIsDarkMode((prev) => !prev);
 
-  // Load Data with AbortController to prevent memory leaks
-  const loadData = useCallback(async (signal?: AbortSignal) => {
+  // Load Data with AbortController to prevent memory leaks.
+  // Trả về true khi cả 4 request đều thành công. Request nào lỗi thì giữ nguyên
+  // dữ liệu cũ của phần đó và hiện banner + toast lỗi.
+  const loadData = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
     setFetchError(null);
     try {
-      const [coursesData, deadlinesData, statsData, announcementsData] = await Promise.allSettled([
+      const results = await Promise.allSettled([
         getCourses(signal),
         getDeadlines(undefined, signal),
         getStats(signal),
         getAnnouncements(signal),
       ]);
+      const [coursesData, deadlinesData, statsData, announcementsData] = results;
 
-      if (coursesData.status === 'fulfilled') setCourses(coursesData.value ?? []);
-      if (deadlinesData.status === 'fulfilled') setDeadlines(deadlinesData.value ?? []);
+      if (coursesData.status === 'fulfilled') setCourses(coursesData.value);
+      if (deadlinesData.status === 'fulfilled') setDeadlines(deadlinesData.value);
       if (statsData.status === 'fulfilled') setStats(statsData.value);
-      if (announcementsData.status === 'fulfilled') setAnnouncements(announcementsData.value ?? []);
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu từ máy chủ';
+      if (announcementsData.status === 'fulfilled') setAnnouncements(announcementsData.value);
+
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (rejected.length === 0) return true;
+      // Bị hủy (unmount / StrictMode) thì không báo lỗi
+      const failure = rejected.find((r) => !isAbortError(r.reason));
+      if (!failure) return false;
+
+      const msg = failure.reason instanceof Error ? failure.reason.message : 'Không thể tải dữ liệu từ máy chủ';
       setFetchError(msg);
       addToast('error', msg, 'Lỗi kết nối');
+      return false;
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -122,8 +131,10 @@ export const App: React.FC = () => {
   // Manual Refresh
   const handleManualRefresh = async () => {
     setRefreshing(true);
-    await loadData();
-    addToast('success', 'Dữ liệu đã được làm mới thành công!', 'Đồng bộ hoàn tất');
+    const ok = await loadData();
+    if (ok) {
+      addToast('success', 'Dữ liệu đã được làm mới thành công!', 'Đồng bộ hoàn tất');
+    }
   };
 
   // Optimistic Toggle Complete (0ms latency!)

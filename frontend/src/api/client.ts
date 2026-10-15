@@ -5,7 +5,7 @@ const API_BASE = '/api';
 /**
  * Helper fetch an toàn với AbortSignal và xử lý lỗi chuẩn mực
  */
-async function safeFetch<T>(endpoint: string, options?: RequestInit): Promise<{ ok: boolean; data?: T; error?: string }> {
+async function safeFetch<T>(endpoint: string, options?: RequestInit): Promise<{ ok: boolean; data?: T; error?: string; aborted?: boolean }> {
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
@@ -27,19 +27,38 @@ async function safeFetch<T>(endpoint: string, options?: RequestInit): Promise<{ 
     return { ok: true, data };
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      return { ok: false, error: 'Yêu cầu bị hủy' };
+      return { ok: false, error: 'Yêu cầu bị hủy', aborted: true };
     }
     const message = err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ';
     return { ok: false, error: message };
   }
 }
 
-export async function getCourses(signal?: AbortSignal): Promise<Course[]> {
-  const res = await safeFetch<{ ok: boolean; data?: Course[] }>('/courses', { signal });
-  if (res.ok && Array.isArray(res.data?.data)) {
-    return res.data.data;
+/** Kiểm tra request bị hủy (AbortController) — không phải lỗi cần báo cho người dùng. */
+export function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
+
+/**
+ * Lấy `data` từ response dạng { ok, data }. Ném lỗi khi request thất bại thay vì
+ * trả về mảng rỗng, để giao diện biết là lỗi kết nối chứ không phải "không có dữ liệu".
+ */
+async function fetchData<T>(endpoint: string, signal: AbortSignal | undefined, isValid: (data: unknown) => boolean): Promise<T> {
+  const res = await safeFetch<{ ok: boolean; data?: T }>(endpoint, { signal });
+  if (res.aborted) {
+    throw new DOMException('Yêu cầu bị hủy', 'AbortError');
   }
-  return [];
+  if (!res.ok) {
+    throw new Error(res.error ?? 'Không thể tải dữ liệu từ máy chủ');
+  }
+  if (!isValid(res.data?.data)) {
+    throw new Error(`Dữ liệu trả về từ ${endpoint} không đúng định dạng`);
+  }
+  return res.data!.data as T;
+}
+
+export async function getCourses(signal?: AbortSignal): Promise<Course[]> {
+  return fetchData<Course[]>('/courses', signal, Array.isArray);
 }
 
 export async function getDeadlines(params?: { course?: string; status?: string }, signal?: AbortSignal): Promise<Deadline[]> {
@@ -48,36 +67,15 @@ export async function getDeadlines(params?: { course?: string; status?: string }
   if (params?.status) query.set('status', params.status);
 
   const endpoint = `/deadlines${query.toString() ? `?${query.toString()}` : ''}`;
-  const res = await safeFetch<{ ok: boolean; data?: Deadline[] }>(endpoint, { signal });
-  if (res.ok && Array.isArray(res.data?.data)) {
-    return res.data.data;
-  }
-  return [];
+  return fetchData<Deadline[]>(endpoint, signal, Array.isArray);
 }
 
 export async function getStats(signal?: AbortSignal): Promise<DashboardStats> {
-  const res = await safeFetch<{ ok: boolean; data?: DashboardStats }>('/stats', { signal });
-  if (res.ok && res.data?.data) {
-    return res.data.data;
-  }
-  return {
-    total_deadlines: 0,
-    completed_deadlines: 0,
-    pending_deadlines: 0,
-    completion_rate: 0,
-    urgent_24h: 0,
-    upcoming_3d: 0,
-    overdue: 0,
-    total_courses: 0,
-  };
+  return fetchData<DashboardStats>('/stats', signal, (d) => typeof d === 'object' && d !== null);
 }
 
 export async function getAnnouncements(signal?: AbortSignal): Promise<Announcement[]> {
-  const res = await safeFetch<{ ok: boolean; data?: Announcement[] }>('/announcements', { signal });
-  if (res.ok && Array.isArray(res.data?.data)) {
-    return res.data.data;
-  }
-  return [];
+  return fetchData<Announcement[]>('/announcements', signal, Array.isArray);
 }
 
 export async function createManualDeadline(payload: {
